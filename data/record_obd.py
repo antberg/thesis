@@ -7,7 +7,7 @@ import os
 import pickle
 from absl import app, flags
 
-from util import TimedList
+from util import TimedList, get_timestamp
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("data_dir", "./raw/obd", "Data directory where to store recordings.")
@@ -32,7 +32,7 @@ def main(argv):
 
     # Create folder
     print("Creating data folder...")
-    timestamp = time.strftime("%y%m%d_%H%M%S", time.localtime())
+    timestamp = get_timestamp()
     write_dir = os.path.join(FLAGS.data_dir, timestamp)
     os.makedirs(write_dir)
 
@@ -47,14 +47,6 @@ def main(argv):
     conn.start()
     time.sleep(FLAGS.length)
     conn.stop()
-
-    class Obj:
-        def __init__(self):
-            self.value = -1
-    for i, c in enumerate(FLAGS.commands):
-        o = Obj()
-        o.value = i
-        c_callbacks[c](o)
 
     # Record audio
     if FLAGS.audio:
