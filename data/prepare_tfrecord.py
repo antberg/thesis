@@ -82,7 +82,7 @@ def main(argv):
         raise ValueError("Data directory must be set (using the --data_dir flag).")
     tfrecord_path = FLAGS.tfrecord_path
     if tfrecord_path is None:
-        tfrecord_path = os.path.join("./tfrecord", get_timestamp() + ".tfrecord")
+        tfrecord_path = os.path.join("./tfrecord", get_timestamp(), "data.tfrecord")
         logging.info("No save path for the TFRecord specified, will save to '%s'." % tfrecord_path)
     elif os.path.exists(tfrecord_path):
         raise FileExistsError("'%s' already exists." % tfrecord_path)
@@ -96,6 +96,9 @@ def main(argv):
     hop_secs = FLAGS.hop_secs
     logging.info("Will split training examples into %d second windows with %d second hops." % (window_secs, hop_secs))
 
+    audio_rate = -1
+    input_rate = -1
+    n_samples = 0
     with tf.io.TFRecordWriter(tfrecord_path) as writer:
         for data_path in glob.glob(data_path_format):
             # Load example
@@ -103,21 +106,42 @@ def main(argv):
             with open(data_path, "rb") as data_file:
                 data = pickle.load(data_file)
             
+            # Make sure sample rates are consistent
+            if audio_rate == -1:
+                audio_rate = data["sample_rate"]
+                input_rate = data["frame_rate"]
+            elif audio_rate != data["sample_rate"]:
+                raise ValueError("Data must have the same audio sample rate.")
+            elif input_rate != data["frame_rate"]:
+                raise ValueError("Data must have the same input sample rate.")
+            
             # Split example into windows and write to TFRecord
-            sample_rate = data["sample_rate"]
-            frame_rate = data["frame_rate"]
             logging.info("Splitting into windows and writing to TFRecord...")
-            n_windows = get_n_windows(data["audio"], sample_rate, window_secs, hop_secs)
+            n_windows = get_n_windows(data["audio"], audio_rate, window_secs, hop_secs)
+            n_samples += n_windows
             for i, window in enumerate(split_data(data, window_secs, hop_secs, FLAGS.shuffle)):
                 logging.info("Processing window %d out of %d..." % (i+1, n_windows))
                 writer.write(get_serialized_example(window))
                 if FLAGS.inspect_windows:
                     plt.figure(figsize=(8, 4))
-                    plot_audio_f0(window["audio"], sample_rate, window["f0"], frame_rate)
-                    sd.play(window["audio"], sample_rate)
+                    plot_audio_f0(window["audio"], audio_rate, window["f0"], input_rate)
+                    sd.play(window["audio"], audio_rate)
                     plt.show()
                     sd.wait()
             logging.info("Done with '%s'." % data_path)
+    
+    metadata = {
+        "audio_rate": audio_rate,
+        "input_rate": input_rate,
+        "n_samples": n_samples,
+        "example_secs": window_secs,
+        "hop_secs": hop_secs
+    }
+    metadata_path = os.path.join(tfrecord_dir, "metadata.pickle")
+    print("Saving metadata to '%s'..." % metadata_path)
+    with open(metadata_path, "wb") as f:
+        pickle.dump(metadata, f)
+    print("Done.")
 
 if __name__ == "__main__":
     app.run(main)
