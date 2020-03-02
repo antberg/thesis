@@ -6,7 +6,7 @@ from ddsp.processors import ProcessorGroup, Add
 
 class HarmonicPlusNoise(ProcessorGroup):
     '''Spectral modeling synthesis (SMS) with harmonic sinusoids.'''
-    def __init__(self, window_secs=None, audio_rate=None, input_rate=None, name="harmonic-plus-noise"):
+    def __init__(self, window_secs=None, audio_rate=None, input_rate=None, name="harmonic_plus_noise"):
         if window_secs is None:
             raise ValueError("Length of windows (window_secs) must be set.")
         if audio_rate is None:
@@ -16,7 +16,7 @@ class HarmonicPlusNoise(ProcessorGroup):
         self.window_secs = window_secs
         self.audio_rate = audio_rate
         self.input_rate = input_rate
-        self.n_samples = window_secs * audio_rate
+        self.n_samples = int(window_secs * audio_rate)
         self.additive = Additive(n_samples=self.n_samples, sample_rate=self.audio_rate, name="additive")
         self.subtractive = FilteredNoise(n_samples=self.n_samples, name="subtractive", initial_bias=-2.0)
         self.add = Add()
