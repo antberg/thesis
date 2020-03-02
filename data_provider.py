@@ -32,12 +32,20 @@ class DataProvider:
         raise NotImplementedError
 
     def get_batch(self, batch_size, shuffle=True, repeats=-1):
-        '''Get a batch of data.'''
+        '''Get a dataset with batches of data.'''
         dataset = self.get_dataset(shuffle)
         dataset = dataset.repeat(repeats)
         dataset = dataset.batch(batch_size, drop_remainder=True)
         dataset = dataset.prefetch(buffer_size=self.AUTOTUNE)
         return dataset
+    
+    def get_single_batch(self, batch_size=1, batch_number=1):
+        '''Get a single batch from the dataset.'''
+        dataset = self.get_batch(batch_size, shuffle=False)
+        data_iter = iter(dataset)
+        for _ in range(batch_number):
+            batch = next(data_iter)
+        return batch
 
 class TFRecordProvider(DataProvider):
     '''Class for handling data stored in TFRecords.'''
