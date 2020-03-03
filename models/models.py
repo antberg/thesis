@@ -1,26 +1,38 @@
-'''Full models for neural audio synthesis.'''
+'''
+End-to-end models for neural audio synthesis.
+'''
 from ddsp.training.models import Autoencoder
 from ddsp.losses import SpectralLoss
+
+from .losses import MelSpectralLoss
 from .preprocessors import F0Preprocessor
 from .decoders import F0RnnFcDecoder
 from .processors import HarmonicPlusNoise
 
-import pdb
-
 class F0RnnFcHPNDecoder(Autoencoder):
     '''Full RNN-FC decoder harmonic-plus-noise synthesizer stack for decoding f0 signals into audio.'''
-    def __init__(self, window_secs=None, audio_rate=None, input_rate=None, name="f0-rnn-fc-hps-decoder"):
+    def __init__(self, window_secs=None,
+                       audio_rate=None,
+                       input_rate=None,
+                       f0_denom=1.,
+                       name="f0_rnn_fc_hps_decoder",
+                       n_harmonic_distribution=60,
+                       n_noise_magnitudes=65,
+                       losses=None):
         # Initialize preprocessor
-        preprocessor = F0Preprocessor()
+        if window_secs * input_rate % 1.0 != 0.0:
+            raise ValueError("window_secs and input_rate must result in an integer number of samples per window.")
+        time_steps = int(window_secs * input_rate)
+        preprocessor = F0Preprocessor(time_steps=time_steps, denom=f0_denom, rate=input_rate)
 
         # Initialize decoder
         decoder = F0RnnFcDecoder(rnn_channels = 512,
                                  rnn_type = "gru",
                                  ch = 512,
                                  layers_per_stack = 3,
-                                 output_splits = (('amps', 1),
-                                                  ('harmonic_distribution', 60),
-                                                  ('noise_magnitudes', 65)))
+                                 output_splits = (("amps", 1),
+                                                  ("harmonic_distribution", n_harmonic_distribution),
+                                                  ("noise_magnitudes", n_noise_magnitudes)))
         
         # Initialize processor group
         processor_group = HarmonicPlusNoise(window_secs=window_secs,
@@ -28,9 +40,11 @@ class F0RnnFcHPNDecoder(Autoencoder):
                                             input_rate=input_rate)
         
         # Initialize losses
-        losses = [SpectralLoss(loss_type="L1",
-                               mag_weight=1.0,
-                               logmag_weight=1.0)]
+        if losses is None:
+            losses = [SpectralLoss(fft_sizes=(8192, 4096, 2048, 1024, 512, 256, 128, 64),
+                                   loss_type="L1",
+                                   mag_weight=0.0,
+                                   logmag_weight=1.0)]
         
         # Call parent constructor
         super(F0RnnFcHPNDecoder, self).__init__(preprocessor=preprocessor,

@@ -7,6 +7,7 @@ class ModelBuilder:
     '''
     def __init__(self, **kwargs):
         self.config = kwargs
+        self.model = None
     
     @property
     def checkpoint_dir(self):
@@ -30,11 +31,15 @@ class ModelBuilder:
     
     @property
     def n_harmonic_distribution(self):
-        return self.config.get("n_harmonic_distribution", None)
+        return self.config.get("n_harmonic_distribution", 60)
     
     @property
     def n_noise_magnitudes(self):
-        return self.config.get("n_noise_magnitudes", None)
+        return self.config.get("n_noise_magnitudes", 65)
+    
+    @property
+    def losses(self):
+        return self.config.get("losses", None)
     
     @property
     def model_type(self):
@@ -49,7 +54,8 @@ class ModelBuilder:
                                       input_rate=self.input_rate,
                                       f0_denom=self.f0_denom,
                                       n_harmonic_distribution=self.n_harmonic_distribution,
-                                      n_noise_magnitudes=self.n_noise_magnitudes)
+                                      n_noise_magnitudes=self.n_noise_magnitudes,
+                                      losses=self.losses)
         else:
             raise ValueError("%s is not a valid model_type." % self.model_type)
 
@@ -61,16 +67,3 @@ class ModelBuilder:
             self.model.restore(self.checkpoint_dir)
         
         return self.model
-
-    @staticmethod
-    def create_f0_rnn_fc_hpn_decoder(window_secs=DEFAULT_WINDOW_SECS,
-                                     audio_rate=DEFAULT_SAMPLE_RATE,
-                                     input_rate=DEFAULT_FRAME_RATE,
-                                     **kwargs):
-        '''DEPRICATED. Use the factory method build() after setting config params during init instead.'''
-        f0_denom = 1. if kwargs.get("f0_denom", None) is None else kwargs["f0_denom"]
-        model = F0RnnFcHPNDecoder(window_secs=window_secs,
-                                  audio_rate=audio_rate,
-                                  input_rate=input_rate,
-                                  f0_denom=f0_denom)
-        return model

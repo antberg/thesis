@@ -18,8 +18,8 @@ class MelSpectralLoss(tfkl.Layer):
                  sample_rate=16000,
                  n_bands=4,
                  loss_type="L1",
-                 mag_weight=1.0,
-                 logmag_weight=0.0,
+                 mag_weight=0.0,
+                 logmag_weight=1.0,
                  name="mel_spectral_loss"):
         if np.log2(n_bands) % 1.0 != 0.0:
             raise ValueError("n_bands must be a power of 2.")
