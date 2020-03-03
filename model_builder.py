@@ -42,6 +42,10 @@ class ModelBuilder:
         return self.config.get("losses", None)
     
     @property
+    def feature_domain(self):
+        return self.config.get("feature_domain", "freq")
+    
+    @property
     def model_type(self):
         return self.config.get("model_type", None)
     
@@ -55,7 +59,8 @@ class ModelBuilder:
                                       f0_denom=self.f0_denom,
                                       n_harmonic_distribution=self.n_harmonic_distribution,
                                       n_noise_magnitudes=self.n_noise_magnitudes,
-                                      losses=self.losses)
+                                      losses=self.losses,
+                                      feature_domain=self.feature_domain)
         else:
             raise ValueError("%s is not a valid model_type." % self.model_type)
 

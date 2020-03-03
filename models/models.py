@@ -15,15 +15,19 @@ class F0RnnFcHPNDecoder(Autoencoder):
                        audio_rate=None,
                        input_rate=None,
                        f0_denom=1.,
-                       name="f0_rnn_fc_hps_decoder",
                        n_harmonic_distribution=60,
                        n_noise_magnitudes=65,
-                       losses=None):
+                       losses=None,
+                       feature_domain="freq",
+                       name="f0_rnn_fc_hps_decoder"):
         # Initialize preprocessor
         if window_secs * input_rate % 1.0 != 0.0:
             raise ValueError("window_secs and input_rate must result in an integer number of samples per window.")
         time_steps = int(window_secs * input_rate)
-        preprocessor = F0Preprocessor(time_steps=time_steps, denom=f0_denom, rate=input_rate)
+        preprocessor = F0Preprocessor(time_steps=time_steps,
+                                      denom=f0_denom,
+                                      rate=input_rate,
+                                      feature_domain=feature_domain)
 
         # Initialize decoder
         decoder = F0RnnFcDecoder(rnn_channels = 512,
