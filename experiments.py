@@ -1,17 +1,18 @@
 '''
 Collection of scripts for simple experiments.
 '''
-from absl import app, logging
-import matplotlib.pyplot as plt
-from ddsp import spectral_ops
-import pickle
+import pdb
+
 import os
-import tensorflow as tf
+import time
+import pickle
+from absl import app, logging
 import numpy as np
+import tensorflow as tf
+import matplotlib.pyplot as plt
 import sounddevice as sd
 import soundfile as sf
-import time
-import pdb
+from ddsp import spectral_ops
 
 from model_builder import ModelBuilder
 from data_provider import TFRecordProvider
@@ -117,7 +118,8 @@ def experiment_200227_1_hpn_ford_cyl():
     ckpt_dir = "./data/weights/200227_1_hpn_ford_cyl"
     data_dir = "./data/tfrecord/ford"
     experiment_ford_helper(ckpt_dir, data_dir, f0_denom=4.,
-                                               n_harmonic_distribution=100)
+                                               n_harmonic_distribution=100,
+                                               feature_domain="freq-old")
 
 def experiment_200228_1_hpn_ford_mini_mel():
     '''
@@ -136,7 +138,8 @@ def experiment_200228_1_hpn_ford_mini_mel():
     ckpt_dir = "./data/weights/200228_1_hpn_ford_mini_mel"
     data_dir = "./data/tfrecord/ford_mini"
     experiment_ford_helper(ckpt_dir, data_dir, f0_denom=4.,
-                                               n_noise_magnitudes=200)
+                                               n_noise_magnitudes=200,
+                                               feature_domain="freq-old")
 
 def experiment_200228_2_hpn_ford_mini_hipass():
     '''
@@ -155,7 +158,8 @@ def experiment_200228_2_hpn_ford_mini_hipass():
     ckpt_dir = "./data/weights/200228_2_hpn_ford_mini_hipass"
     data_dir = "./data/tfrecord/ford_mini_hipass"
     experiment_ford_helper(ckpt_dir, data_dir, f0_denom=4.,
-                                               n_noise_magnitudes=200)
+                                               n_noise_magnitudes=200,
+                                               feature_domain="freq-old")
 
 def experiment_200228_3_hpn_ford_mini_time_input():
     '''
@@ -163,17 +167,17 @@ def experiment_200228_3_hpn_ford_mini_time_input():
     4 seconds of recordings using a time representation into decoder instead of f0/4.
 
     Specifications, incl. differences from original DDSP autoencoder:
-      - 4 seconds of training sounds, HIGH-PASS FILTERED first window of 1-min Ford dataset
+      - 4 seconds of training sounds, first window of 1-min Ford dataset
       - log Mel spectrogram loss with (16384, 8192, ..., 128) FFT sizes
+      - 4 equally sized frequency bands: (0-6k, 6k-12k, 12k-18k, 18k-24k) Hz 
       - divide f0 by 4 to take the 4 cylinders into account
-      - 200 parameters in filtered noise processor
     
     Author: Anton Lundberg
     Date:   2020-02-28
     '''
     ckpt_dir = "./data/weights/200228_3_hpn_ford_mini_time_input"
     data_dir = "./data/tfrecord/ford_mini"
-    experiment_ford_helper(ckpt_dir, data_dir, f0_denom=4.)
+    experiment_ford_helper(ckpt_dir, data_dir, f0_denom=4., feature_domain="time")
 
 def experiment_200228_4_hpn_ford_time_input():
     '''
@@ -183,6 +187,7 @@ def experiment_200228_4_hpn_ford_time_input():
     Specifications, incl. differences from original DDSP autoencoder:
       - 4 seconds of training sounds, HIGH-PASS FILTERED first window of 1-min Ford dataset
       - log Mel spectrogram loss with (16384, 8192, ..., 128) FFT sizes
+      - 2 equally sized frequency bands: (0-12k, 12k-24k) Hz 
       - divide f0 by 4 to take the 4 cylinders into account
     
     Author: Anton Lundberg
@@ -190,13 +195,15 @@ def experiment_200228_4_hpn_ford_time_input():
     '''
     ckpt_dir = "./data/weights/200228_4_hpn_ford_time_input"
     data_dir = "./data/tfrecord/ford"
-    experiment_ford_helper(ckpt_dir, data_dir, f0_denom=4.)
+    experiment_ford_helper(ckpt_dir, data_dir, f0_denom=4., feature_domain="time")
 
 def experiment_ford_helper(ckpt_dir, data_dir, plot_type="spectrogram",
                                                sound_mode="save",
                                                f0_denom=1.,
                                                n_harmonic_distribution=60,
-                                               n_noise_magnitudes=65):
+                                               n_noise_magnitudes=65,
+                                               losses=None,
+                                               feature_domain="freq"):
     '''
     Code general for all Ford experiments.
     '''
@@ -214,7 +221,9 @@ def experiment_ford_helper(ckpt_dir, data_dir, plot_type="spectrogram",
                          f0_denom=f0_denom,
                          checkpoint_dir=ckpt_dir,
                          n_harmonic_distribution=n_harmonic_distribution,
-                         n_noise_magnitudes=n_noise_magnitudes).build()
+                         n_noise_magnitudes=n_noise_magnitudes,
+                         losses=losses,
+                         feature_domain=feature_domain).build()
 
     logging.info("Normalizing inputs...")
     features = model.encode(input_tensor)
@@ -242,7 +251,7 @@ def experiment_ford_helper(ckpt_dir, data_dir, plot_type="spectrogram",
         plt.imshow(mag_in, origin="lower")
         plt.show()
         pdb.set_trace()'''
-        n_fft = 2048
+        n_fft = 8192
         plot_audio_f0(audio_in, data_provider.audio_rate, f0, data_provider.input_rate, title="recording", n_fft=n_fft)
         plt.figure()
         #mag_out = spectral_ops.compute_mag(audio_out, size=8192)
@@ -265,11 +274,12 @@ def experiment_ford_helper(ckpt_dir, data_dir, plot_type="spectrogram",
         sf.write(audio_out_path, audio_out, data_provider.audio_rate)
 
 def main(argv):
+    #experiment_200226_1_hpn_ford()
     #experiment_200227_1_hpn_ford_cyl()
     #experiment_200228_1_hpn_ford_mini_mel()
-    experiment_200228_2_hpn_ford_mini_hipass()
+    #experiment_200228_2_hpn_ford_mini_hipass()
     #experiment_200228_3_hpn_ford_mini_time_input()
-    #experiment_200228_4_hpn_ford_time_input()
+    experiment_200228_4_hpn_ford_time_input()
 
 if __name__ == "__main__":
     app.run(main)
