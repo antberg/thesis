@@ -1,5 +1,6 @@
 from data.constants import DEFAULT_WINDOW_SECS, DEFAULT_SAMPLE_RATE, DEFAULT_FRAME_RATE
 from models.models import F0RnnFcHPNDecoder
+from models.losses import TimeFreqResMelSpectralLoss
 
 class ModelBuilder:
     '''
@@ -8,6 +9,14 @@ class ModelBuilder:
     def __init__(self, **kwargs):
         self.config = kwargs
         self.model = None
+    
+    @property
+    def model_id(self):
+        return self.config.get("model_id", None)
+    
+    @property
+    def data_dir(self):
+        return self.config.get("data_dir", None)
     
     @property
     def checkpoint_dir(self):
@@ -72,3 +81,27 @@ class ModelBuilder:
             self.model.restore(self.checkpoint_dir)
         
         return self.model
+
+def get_model_builder_from_id(model_id):
+    '''
+    Build a pre-specified model given its ID.
+    '''
+    if model_id == "200306_4_hpn_ford_ddsp":
+        return ModelBuilder(
+            model_id="200306_4_hpn_ford_ddsp",
+            data_dir="./data/tfrecord/ford",
+            checkpoint_dir="./data/weights/200306_4_hpn_ford_ddsp",
+            model_type="f0_rnn_fc_hpn_decoder"
+        )
+    if model_id == "200306_5_hpn_ford_mel_cyl_time":
+        return ModelBuilder(
+            model_id="200306_5_hpn_ford_mel_cyl_time",
+            data_dir="./data/tfrecord/ford",
+            checkpoint_dir="./data/weights/200306_5_hpn_ford_mel_cyl_time",
+            model_type="f0_rnn_fc_hpn_decoder",
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)],
+            feature_domain="time"
+        )
+    else:
+        raise ValueError("%s is not a valid model id." % model_id)
