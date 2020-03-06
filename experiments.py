@@ -392,7 +392,7 @@ def experiment_200305_1_hpn_ford_mini_freq_time_res_mel_loss():
     Date:   2020-03-05
     '''
     ckpt_dir = "./data/weights/200305_1_hpn_ford_mini_freq_time_res_mel_loss"
-    data_dir = "./data/tfrecord/ford_mini"
+    data_dir = "./data/tfrecord/ford"
     experiment_ford_helper(ckpt_dir, data_dir, f0_denom=4., feature_domain="time")
 
 def experiment_ford_helper(ckpt_dir, data_dir, plot_type="spectrogram",
