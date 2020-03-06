@@ -45,9 +45,9 @@ class F0RnnFcHPNDecoder(Autoencoder):
         
         # Initialize losses
         if losses is None:
-            losses = [SpectralLoss(fft_sizes=(8192, 4096, 2048, 1024, 512, 256, 128, 64),
+            losses = [SpectralLoss(fft_sizes=(8192, 4096, 2048, 1024, 512, 256, 128),
                                    loss_type="L1",
-                                   mag_weight=0.0,
+                                   mag_weight=1.0,
                                    logmag_weight=1.0)]
         
         # Call parent constructor
