@@ -86,6 +86,16 @@ def get_model_builder_from_id(model_id):
     '''
     Build a pre-specified model given its ID.
     '''
+    if model_id == "200305_1_hpn_ford_mini_freq_time_res_mel_loss":
+        return ModelBuilder(
+            model_id="200305_1_hpn_ford_mini_freq_time_res_mel_loss",
+            data_dir="./data/tfrecord/ford_mini",
+            checkpoint_dir="./data/weights/200305_1_hpn_ford_mini_freq_time_res_mel_loss",
+            model_type="f0_rnn_fc_hpn_decoder",
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)],
+            feature_domain="time"
+        )
     if model_id == "200306_4_hpn_ford_ddsp":
         return ModelBuilder(
             model_id="200306_4_hpn_ford_ddsp",
