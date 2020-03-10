@@ -6,18 +6,21 @@ import pdb
 import os
 import time
 import pickle
-from absl import app, logging
+from absl import app, logging, flags
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
-import sounddevice as sd
+#import sounddevice as sd
 import soundfile as sf
 from ddsp import spectral_ops
 
-from model_builder import ModelBuilder
+from model_builder import ModelBuilder, get_model_builder_from_id
 from data_provider import TFRecordProvider
 from models.util import compute_mel
 from data.util import plot_audio_f0
+
+FLAGS = flags.FLAGS
+flags.DEFINE_string("model_id", None, "ID of a model.")
 
 # ========== PLOT MAGNITUDE SPECTRUM ==========
 def experiment_plot_mag_spectrum(spec_type):
@@ -183,7 +186,7 @@ def experiment_plot_mel_spectrum_given_time_freq_res(time_res=None, freq_res=Non
         return 2**int(np.log2(fs/df) + 1)
     
     def get_n_fft_min(fs, dt):
-        return 2**int(np.log2(fs*dt))
+        return max(8, 2**int(np.log2(fs*dt)))
     
     get_spectrum = {"mel": get_mel_spectrum,
                     "logmel": get_log_mel_spectrum}[spec_type]
@@ -191,7 +194,7 @@ def experiment_plot_mel_spectrum_given_time_freq_res(time_res=None, freq_res=Non
     audio, audio_rate, input_rate = get_first_window_of_dataset()
     f_n = audio_rate/2
     if time_res is None:
-        time_res = 1/input_rate
+        time_res = 1/audio_rate
     if freq_res is None:
         freq_res = 2.0
     f_max = f_n
@@ -205,9 +208,9 @@ def experiment_plot_mel_spectrum_given_time_freq_res(time_res=None, freq_res=Non
     for n_fft in n_fft_list:
         df = audio_rate/n_fft
         dm = dm_df(f_min)*df
-        n_mels = int((m_max - m_min)/dm)
+        n_mels = int((m_max - m_min)/dm) + 1
         _, ax = plt.subplots(1, 1, figsize=(12,8))
-        mag = get_spectrum(audio, audio_rate, n_fft=n_fft, n_mels=n_mels, overlap=3/4)
+        mag = get_spectrum(audio, audio_rate, n_fft=n_fft, n_mels=n_mels, overlap=.75)
         plt.imshow(mag, origin="lower", cmap="magma")
         ax.set_aspect("auto")
         ax.set_title("n_fft: %d, n_mels: %d" % (n_fft, n_mels))
@@ -395,33 +398,49 @@ def experiment_200305_1_hpn_ford_mini_freq_time_res_mel_loss():
     data_dir = "./data/tfrecord/ford"
     experiment_ford_helper(ckpt_dir, data_dir, f0_denom=4., feature_domain="time")
 
+def experiment_ford_helper_model_id(model_id):
+    '''
+    Run the ford helper for a model with a model ID.
+    '''
+    model_builder = get_model_builder_from_id(model_id)
+    experiment_ford_helper(model_builder.checkpoint_dir,
+                           model_builder.data_dir,
+                           model=model_builder.build())
+
 def experiment_ford_helper(ckpt_dir, data_dir, plot_type="spectrogram",
                                                sound_mode="save",
                                                f0_denom=1.,
                                                n_harmonic_distribution=60,
                                                n_noise_magnitudes=65,
                                                losses=None,
-                                               feature_domain="freq"):
+                                               feature_domain="freq",
+                                               model=None):
     '''
     Code general for all Ford experiments.
     '''
     logging.info("Loading data...")
     data_provider = TFRecordProvider(data_dir)
     input_tensor = data_provider.get_single_batch(batch_number=1)
-    #input_tensor["f0"] = tf.convert_to_tensor(np.flip(np.arange(0., 100., 100./np.size(input_tensor["f0"]))), dtype=tf.float32)[tf.newaxis,:,tf.newaxis]
+    #input_tensor["f0"] = tf.convert_to_tensor(np.flip(np.arange(32., 33., 100./np.size(input_tensor["f0"]))), dtype=tf.float32)[tf.newaxis,:,tf.newaxis]
     #input_tensor["f0"] = tf.convert_to_tensor(np.arange(1., 200., 100./np.size(input_tensor["f0"])), dtype=tf.float32)[tf.newaxis,:,tf.newaxis]
+    #N = np.size(input_tensor["f0"])
+    #x = 2*np.pi/N*np.arange(1,N)
+    #y = 100 + 50*np.sin(x)
+    #input_tensor["f0"] = tf.convert_to_tensor(y, dtype=tf.float32)[tf.newaxis,:,tf.newaxis]
+    #input_tensor["f0"] += 20.
 
     logging.info("Building model...")
-    model = ModelBuilder(model_type="f0_rnn_fc_hpn_decoder",
-                         audio_rate=data_provider.audio_rate,
-                         input_rate=data_provider.input_rate,
-                         window_secs=data_provider.example_secs,
-                         f0_denom=f0_denom,
-                         checkpoint_dir=ckpt_dir,
-                         n_harmonic_distribution=n_harmonic_distribution,
-                         n_noise_magnitudes=n_noise_magnitudes,
-                         losses=losses,
-                         feature_domain=feature_domain).build()
+    if model is None:
+        model = ModelBuilder(model_type="f0_rnn_fc_hpn_decoder",
+                            audio_rate=data_provider.audio_rate,
+                            input_rate=data_provider.input_rate,
+                            window_secs=data_provider.example_secs,
+                            f0_denom=f0_denom,
+                            checkpoint_dir=ckpt_dir,
+                            n_harmonic_distribution=n_harmonic_distribution,
+                            n_noise_magnitudes=n_noise_magnitudes,
+                            losses=losses,
+                            feature_domain=feature_domain).build()
 
     logging.info("Normalizing inputs...")
     features = model.encode(input_tensor)
@@ -482,7 +501,10 @@ def main(argv):
     #experiment_200304_1_hpn_ford_mini_adaptive_mel()
     #experiment_200304_2_hpn_ford_500fps_adaptive_mel()
     #experiment_plot_mel_spectrum_given_time_freq_res()
-    experiment_200305_1_hpn_ford_mini_freq_time_res_mel_loss()
+    #experiment_200305_1_hpn_ford_mini_freq_time_res_mel_loss()
+
+    if FLAGS.model_id:
+        experiment_ford_helper_model_id(FLAGS.model_id)
 
 if __name__ == "__main__":
     app.run(main)
