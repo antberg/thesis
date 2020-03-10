@@ -13,7 +13,6 @@ import tensorflow as tf
 from absl import app, flags, logging
 import matplotlib.pyplot as plt
 import sounddevice as sd
-import tensorflow as tf
 from ddsp.core import oscillator_bank
 from scipy.interpolate import interp1d
 from scipy.signal import correlate
@@ -24,8 +23,8 @@ from constants import DEFAULT_WINDOW_SECS, DEFAULT_HOP_SECS
 FLAGS = flags.FLAGS
 flags.DEFINE_string("data_dir", None, "Directory of training data.")
 flags.DEFINE_string("tfrecord_path", None, "Save path of created TFRecord.")
-flags.DEFINE_float("window_secs", DEFAULT_WINDOW_SECS, "Length of training windows in seconds.")
-flags.DEFINE_float("hop_secs", DEFAULT_HOP_SECS, "Size of training hops in seconds.")
+flags.DEFINE_integer("window_secs", DEFAULT_WINDOW_SECS, "Length of training windows in seconds.")
+flags.DEFINE_integer("hop_secs", DEFAULT_HOP_SECS, "Size of training hops in seconds.")
 flags.DEFINE_bool("shuffle", False, "Shuffle the windows.")
 flags.DEFINE_bool("inspect_windows", False, "Inspect each window manually for debugging.")
 flags.DEFINE_bool("osc", False, "Whether to generate a synchronized oscillating signal.")
