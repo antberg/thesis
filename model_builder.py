@@ -113,5 +113,15 @@ def get_model_builder_from_id(model_id):
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)],
             feature_domain="time"
         )
+    if model_id == "200310_1_hpn_ford_osc":
+        return ModelBuilder(
+            model_id="200310_1_hpn_ford_osc",
+            data_dir="./data/tfrecord/ford_osc",
+            checkpoint_dir="./data/weights/200310_1_hpn_ford_osc",
+            model_type="f0_rnn_fc_hpn_decoder",
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)],
+            feature_domain="osc"
+        )
     else:
         raise ValueError("%s is not a valid model id." % model_id)
