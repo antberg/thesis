@@ -40,6 +40,14 @@ class F0Preprocessor(Preprocessor):
             features["f0_scaled"] = oscillator_bank(features["f0"],
                                                     amplitudes,
                                                     sample_rate=self.rate)[:,:,tf.newaxis]
+        elif self.feature_domain == "osc":
+            if features.get("osc", None) is None:
+                amplitudes = tf.ones(tf.shape(features["f0"]))
+                features["f0_scaled"] = oscillator_bank(self.denom * features["f0"],
+                                                        amplitudes,
+                                                        sample_rate=self.rate)[:,:,tf.newaxis]
+            else:
+                features["f0_scaled"] = features["osc"]
         else:
             raise ValueError("%s is not a valid value for feature_domain." % self.feature_domain)
 
