@@ -95,7 +95,7 @@ def get_synchronized_osc(audio, f0, sample_rate, frame_rate,
                                constant_values=(0, f0_upsample[window_end-1]))
         else:
             f0_window = f0_upsample[window_end-window_size:window_end+n_period]
-        osc_window = .2 * _oscillator_bank(f0_window, sample_rate) # REMOVE THE .2 LATER
+        osc_window = _oscillator_bank(f0_window, sample_rate)
 
         # Synchronize osc and audio
         xcorr = correlate(osc_window - np.mean(osc_window),
