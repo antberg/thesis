@@ -47,7 +47,7 @@ class F0Preprocessor(Preprocessor):
                                                         amplitudes,
                                                         sample_rate=self.rate)[:,:,tf.newaxis]
             else:
-                features["f0_scaled"] = features["osc"]
+                features["f0_scaled"] = features["osc"][:,:,tf.newaxis]
         else:
             raise ValueError("%s is not a valid value for feature_domain." % self.feature_domain)
 
