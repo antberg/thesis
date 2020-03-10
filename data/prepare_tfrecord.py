@@ -29,6 +29,7 @@ flags.DEFINE_float("hop_secs", DEFAULT_HOP_SECS, "Size of training hops in secon
 flags.DEFINE_bool("shuffle", False, "Shuffle the windows.")
 flags.DEFINE_bool("inspect_windows", False, "Inspect each window manually for debugging.")
 flags.DEFINE_bool("osc", False, "Whether to generate a synchronized oscillating signal.")
+flags.DEFINE_bool("pad", False, "Whether to pad the end of the recording with zeros.")
 
 def get_float_feature(value):
     '''Returns a float_list from a float / double.'''
@@ -79,7 +80,10 @@ def get_synchronized_osc(audio, f0, sample_rate, frame_rate,
     n_samples_padded = (n_windows - 1) * hop_size + window_size
     n_padding = n_samples_padded - n_samples
     audio_lopass = np.pad(audio_lopass, (0, n_padding), mode="constant")
-    f0_upsample = np.pad(f0_upsample, (0, n_padding), mode="constant")
+    f0_upsample = np.pad(f0_upsample,
+                         (0, n_padding),
+                         mode="constant",
+                         constant_values=(0, f0_upsample[-1]))
     windows_ends = range(window_size, n_samples + 1, hop_size)
     osc = np.zeros((n_samples,))
     for i, window_end in enumerate(windows_ends):
@@ -114,12 +118,15 @@ def get_synchronized_osc(audio, f0, sample_rate, frame_rate,
     osc = _resample(osc, sample_rate, frame_rate)
     return osc
 
-def get_n_windows(sequence, rate, window_secs, hop_secs):
+def get_n_windows(sequence, rate, window_secs, hop_secs, pad=False):
     window_size = int(window_secs * rate)
     hop_size = int(hop_secs * rate)
-    return int(np.ceil((len(sequence) - window_size) / hop_size)) + 1
+    n_windows = int(np.ceil((len(sequence) - window_size) / hop_size))
+    if pad:
+        n_windows += 1
+    return n_windows
 
-def split_data(data, window_secs, hop_secs, shuffle=False, generate_osc=False):
+def split_data(data, window_secs, hop_secs, shuffle=False, generate_osc=False, pad=False):
     '''
     Generator function for generating windows of training examples.
     Inspired by https://github.com/magenta/ddsp/blob/master/ddsp/training/data_preparation/prepare_tfrecord_lib.py
@@ -131,10 +138,12 @@ def split_data(data, window_secs, hop_secs, shuffle=False, generate_osc=False):
         '''Generate a single window of a sequence'''
         window_size = int(window_secs * rate)
         hop_size = int(hop_secs * rate)
-        n_windows = int(np.ceil((len(sequence) - window_size) / hop_size)) + 1
-        n_samples_padded = (n_windows - 1) * hop_size + window_size
-        n_padding = n_samples_padded - len(sequence)
-        sequence = np.pad(sequence, (0, n_padding), mode="constant")
+        n_windows = int(np.ceil((len(sequence) - window_size) / hop_size))
+        if pad:
+            n_windows += 1
+            n_samples_padded = (n_windows - 1) * hop_size + window_size
+            n_padding = n_samples_padded - len(sequence)
+            sequence = np.pad(sequence, (0, n_padding), mode="constant")
         windows_ends = range(window_size, len(sequence) + 1, hop_size)
         if shuffle:
             windows_ends = list(windows_ends)
@@ -202,9 +211,9 @@ def main(argv):
             
             # Split example into windows and write to TFRecord
             logging.info("Splitting into windows and writing to TFRecord...")
-            n_windows = get_n_windows(data["audio"], audio_rate, window_secs, hop_secs)
+            n_windows = get_n_windows(data["audio"], audio_rate, window_secs, hop_secs, FLAGS.pad)
             n_samples += n_windows
-            for i, window in enumerate(split_data(data, window_secs, hop_secs, FLAGS.shuffle, FLAGS.osc)):
+            for i, window in enumerate(split_data(data, window_secs, hop_secs, FLAGS.shuffle, FLAGS.osc, FLAGS.pad)):
                 logging.info("Processing window %d out of %d..." % (i+1, n_windows))
                 writer.write(get_serialized_example(window))
                 if FLAGS.inspect_windows:
