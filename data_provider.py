@@ -22,6 +22,7 @@ class DataProvider:
         self.data_dir = data_dir
         self.audio_rate = metadata["audio_rate"]
         self.input_rate = metadata["input_rate"]
+        self.input_keys = metadata.get("input_keys", ["f0"])
         self.n_samples = metadata["n_samples"]
         self.example_secs = metadata["example_secs"]
         self.hop_secs = metadata["hop_secs"]
@@ -72,5 +73,7 @@ class TFRecordProvider(DataProvider):
     @property
     def features_dict(self):
         '''Dictionary of features to read from dataset.'''
-        return {"audio": tf.io.FixedLenFeature([self.audio_length], dtype=tf.float32),
-                "f0": tf.io.FixedLenFeature([self.input_length], dtype=tf.float32)}
+        features = {"audio": tf.io.FixedLenFeature([self.audio_length], dtype=tf.float32)}
+        for key in self.input_keys:
+            features[key] = tf.io.FixedLenFeature([self.input_length], dtype=tf.float32)
+        return features

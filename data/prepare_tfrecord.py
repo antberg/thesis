@@ -51,7 +51,7 @@ def _resample(y, fs_old, fs_new, interp_method="linear"):
     y = np.append(y, y[-1])
     N = np.size(y)
     T = N/fs_old
-    t_old = np.arange(0.0, T, 1/fs_old)
+    t_old = np.arange(0.0, T, 1/fs_old)[:N]
     y_interp = interp1d(t_old, y, kind=interp_method)
     t_new = np.arange(0.0, T-1/fs_old, 1/fs_new)
     return y_interp(t_new)
@@ -223,9 +223,13 @@ def main(argv):
                     sd.wait()
             logging.info("Done with '%s'." % data_path)
     
+    input_keys = ["f0"]
+    if FLAGS.osc:
+        input_keys.append("osc")
     metadata = {
         "audio_rate": audio_rate,
         "input_rate": input_rate,
+        "input_keys": input_keys,
         "n_samples": n_samples,
         "example_secs": window_secs,
         "hop_secs": hop_secs
