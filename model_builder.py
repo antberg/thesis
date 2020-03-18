@@ -1,5 +1,5 @@
 from data.constants import DEFAULT_WINDOW_SECS, DEFAULT_SAMPLE_RATE, DEFAULT_FRAME_RATE
-from models.models import F0RnnFcHPNDecoder
+from models.models import F0RnnFcHPNDecoder, OscF0RnnFcHPNDecoder
 from models.losses import TimeFreqResMelSpectralLoss
 
 class ModelBuilder:
@@ -70,6 +70,14 @@ class ModelBuilder:
                                       n_noise_magnitudes=self.n_noise_magnitudes,
                                       losses=self.losses,
                                       feature_domain=self.feature_domain)
+        elif self.model_type == "osc_f0_rnn_fc_hpn_decoder":
+            model = OscF0RnnFcHPNDecoder(window_secs=self.window_secs,
+                                         audio_rate=self.audio_rate,
+                                         input_rate=self.input_rate,
+                                         f0_denom=self.f0_denom,
+                                         n_harmonic_distribution=self.n_harmonic_distribution,
+                                         n_noise_magnitudes=self.n_noise_magnitudes,
+                                         losses=self.losses)
         else:
             raise ValueError("%s is not a valid model_type." % self.model_type)
 
@@ -132,6 +140,26 @@ def get_model_builder_from_id(model_id):
             f0_denom=4.0,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)],
             feature_domain="osc"
+        )
+    if model_id == "200310_2_hpn_ford_1000fps_osc":
+        return ModelBuilder(
+            model_id="200310_2_hpn_ford_1000fps_osc",
+            data_dir="./data/tfrecord/ford_1000fps_osc",
+            checkpoint_dir="./data/weights/200310_2_hpn_ford_1000fps_osc",
+            model_type="f0_rnn_fc_hpn_decoder",
+            input_rate=1000,
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/1000)],
+            feature_domain="osc"
+        )
+    if model_id == "200318_1_hpn_ford_mini_f0_osc":
+        return ModelBuilder(
+            model_id="200318_1_hpn_ford_mini_f0_osc",
+            data_dir="./data/tfrecord/ford_osc_mini",
+            checkpoint_dir="./data/weights/200318_1_hpn_ford_mini_f0_osc",
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
         )
     else:
         raise ValueError("%s is not a valid model id." % model_id)
