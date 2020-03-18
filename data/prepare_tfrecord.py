@@ -56,8 +56,42 @@ def _resample(y, fs_old, fs_new, interp_method="linear"):
     t_new = np.arange(0.0, T-1/fs_old, 1/fs_new)
     return y_interp(t_new)
 
+def _get_first_extremum(y):
+    mono = np.diff(y) < 0
+    extr_type = "min"
+    if mono[0]:
+        mono = ~mono
+        extr_type = "max"
+    return np.argmax(mono), extr_type
+
+def _get_second_extremum(y):
+    i, _ = _get_first_extremum(y)
+    i_new, extr_type = _get_first_extremum(y[i:])
+    return i+i_new, extr_type
+
+def _sine_stitch(y1, y2):
+    '''Stitch together two sines'''
+    y = np.concatenate((y1, y2))
+
+    # Find last peak/trough of y1
+    i1, type1 = _get_first_extremum(np.flip(y1))
+    i1 = len(y1) - i1 - 1
+
+    # Find second peak/trough of y2
+    i2, type2 = _get_second_extremum(y2)
+    i2 = len(y1) + i2
+
+    # Create sine stitch
+    n_samples = i2 - i1
+    n = np.arange(0, n_samples)
+    period = n_samples if type1 == type2 else 2*n_samples
+    phi = -np.pi/2 if type1 == "max" else np.pi/2
+    stitch = np.sin(2*np.pi*n/period + phi)
+    y[i1:i2] = stitch
+    return y
+
 def get_synchronized_osc(audio, f0, sample_rate, frame_rate,
-                                                 window_secs=.1,
+                                                 window_secs=.05,
                                                  hop_secs=.05,
                                                  f_cutoff=200):
     '''
@@ -106,14 +140,14 @@ def get_synchronized_osc(audio, f0, sample_rate, frame_rate,
         lag = xcorr[window_size-1:window_size+n_period-1].argmax()
         osc_window = osc_window[lag:lag+window_size]
         
-        # Cross-fade osc windows
+        # Stitch together osc windows
         if i == 0:
             osc[:window_size] = osc_window
         else:
-            osc[window_end-window_size:window_end-hop_size] = \
-                .5 * osc[window_end-window_size:window_end-hop_size] + \
-                .5 * osc_window[:window_size-hop_size]
-            osc[window_end-hop_size:window_end] = osc_window[window_size-hop_size:]
+            osc[window_end-2*window_size:window_end] = _sine_stitch(
+                osc[window_end-2*window_size:window_end-window_size], 
+                osc_window)
+
     osc = _resample(osc, sample_rate, frame_rate)
     return osc
 
