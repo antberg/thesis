@@ -170,5 +170,14 @@ def get_model_builder_from_id(model_id):
             f0_denom=4.0,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
         )
+    if model_id == "200320_1_hpn_ford_large":
+        return ModelBuilder(
+            model_id="200320_1_hpn_ford_large_all",
+            data_dir="./data/tfrecord/ford_large_all",
+            checkpoint_dir="./data/weights/200320_1_hpn_ford_large_all",
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
+        )
     else:
         raise ValueError("%s is not a valid model id." % model_id)
