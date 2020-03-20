@@ -2,6 +2,7 @@
 Utility functionalities.
 '''
 import time
+from absl import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import librosa
@@ -22,10 +23,8 @@ def plot_data_dict(data, save_path=None):
     '''
     Plot the data in a dict.
     '''
-    audio_length = len(data["audio"])/data["sample_rate"]
-    audio_times = np.arange(0., audio_length, 1/data["sample_rate"])
-    input_length = len(data["inputs"]["f0"])/data["frame_rate"]
-    input_times = np.arange(0., input_length, 1/data["frame_rate"])
+    audio_times = np.arange(0.0, len(data["audio"]))/data["sample_rate"]
+    input_times = np.arange(0.0, len(data["inputs"]["f0"]))/data["frame_rate"]
     n_rows = 1 + len(data["inputs"])
     _, ax = plt.subplots(n_rows, 1, figsize=(15, 2*n_rows))
     ax[0].plot(audio_times, data["audio"])
@@ -79,7 +78,7 @@ class TimedList:
     
     def append(self, e):
         now = time.time()
-        if self.debug:
-            print(self.name, "=\t", e, "\tat time", now)
+        if self.debug and len(self.values) % 100 == 0:
+            print(self.name, "=\t", e, "\tat time", now, flush=True)
         self.values.append(e)
         self.times.append(now)
