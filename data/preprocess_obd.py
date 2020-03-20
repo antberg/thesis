@@ -30,7 +30,7 @@ flags.DEFINE_string("f0_path", None, "Path to f0 array, if it has been estimated
 flags.DEFINE_list("plots", ["obd", "f0-rpm", "f0-audio", "data"], "Which plots to show.")
 flags.DEFINE_string("plot_mode", "save", "Whether to save or show plots.")
 
-def preprocess_obd_data(c_list):
+def preprocess_obd_data(c_list, t0=None):
     '''Preprocess OBD data.'''
     # Convert Quantity object to dimensionless numpy array.
     n = len(c_list.values)
@@ -43,7 +43,7 @@ def preprocess_obd_data(c_list):
     
     # Convert absolute time in ns to relative time in s.
     t = np.array(c_list.times)
-    t = t - t[0]
+    t = t - t[0] if t0 is None else t - t0
 
     # Remove NaN elements
     t = t[~np.isnan(y)]
@@ -55,6 +55,10 @@ def main(argv):
     # Check preconditions
     if "RPM" not in FLAGS.commands:
         raise Exception("RPM must be part of the OBD commands since it is used for OBD-audio alignment.")
+    elif FLAGS.commands[0] != "RPM": # Make sure RPM is first in commands list (necessary for later)
+        i_RPM = FLAGS.commands.index("RPM")
+        FLAGS.commands[i_RPM] = FLAGS.commands[0]
+        FLAGS.commands[0] = "RPM"
     
     # Create save folder
     save_dir = os.path.join(FLAGS.save_dir, FLAGS.data_name)
@@ -74,10 +78,12 @@ def main(argv):
         c_pickle_path = os.path.join(FLAGS.data_dir, c + ".pickle")
         logging.info("Unpickling %s data..." % c)
         c_list = pickle.load(open(c_pickle_path, "rb"))
+        if c == "RPM":
+            t0 = c_list.times[0] # Let times be relative to RPM's initial time
 
         logging.info("Preprocessing data...")
         unit = str(c_list.values[0].units)
-        y, t = preprocess_obd_data(c_list)
+        y, t = preprocess_obd_data(c_list, t0=t0)
         c_dict[c] = {"values": y, "times": t}
 
         if "obd" in FLAGS.plots:
@@ -174,7 +180,11 @@ def main(argv):
     
     # Resample OBD signals and store together with audio in dict
     logging.info("Resampling input signals to given frame rate...")
-    input_times = np.arange(0., np.max(c_dict["RPM"]["times"]), 1/FLAGS.frame_rate)
+    time_minmax = np.inf
+    for c in FLAGS.commands:
+        c_max = np.max(c_dict[c]["times"])
+        time_minmax = time_minmax if time_minmax < c_max else c_max
+    input_times = np.arange(0., time_minmax, 1/FLAGS.frame_rate)
     f0_signal = rpm_scale*c_interp["RPM"](input_times)
     data = {
         "sample_rate": FLAGS.sample_rate,
@@ -184,7 +194,7 @@ def main(argv):
     }
     for c in FLAGS.commands:
         data["inputs"][c] = c_interp[c](input_times)
-    audio_times = np.arange(0., audio_trimmed_length, 1./FLAGS.sample_rate)
+    audio_times = np.arange(0., len(audio_trimmed))/FLAGS.sample_rate
     data_path = os.path.join(save_dir, "data.pickle")
     logging.info("Saving data to %s..." % data_path)
     pickle.dump(data, open(data_path, "wb"))
