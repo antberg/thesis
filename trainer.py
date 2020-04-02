@@ -16,6 +16,7 @@ flags.DEFINE_string("checkpoint_dir", None, "Directory to store checkpoints.")
 flags.DEFINE_string("data_dir", None, "Directory of training data (TFRecords).")
 flags.DEFINE_integer("batch_size", 32, "Batch size.")
 flags.DEFINE_integer("steps_per_summary", 1, "Training steps per summary.")
+flags.DEFINE_integer("steps_per_summary_valid", 10, "Training steps per summary of validation.")
 flags.DEFINE_integer("steps_per_save", 10, "Training steps per checkpoint save.")
 flags.DEFINE_list("devices", None, "Training devices.")
 flags.DEFINE_bool("valid", False, "Whether to store validation metrics in summary.")
@@ -33,6 +34,7 @@ def train(data_provider,
           batch_size=32,
           num_steps=1000000,
           steps_per_summary=10,
+          steps_per_summary_valid=10,
           steps_per_save=300,
           model_dir='~/tmp/ddsp',
           valid=False,
@@ -91,17 +93,19 @@ def train(data_provider,
         if step % steps_per_save == 0:
             trainer.save(model_dir) 
             summary_writer.flush()
-            if valid:
-                losses_valid = get_valid_losses(trainer.model, data_provider_valid)
-                for k, v in losses_valid.items():
-                    avg_losses_valid[k].update_state(v)
-                logging.info('Step:%d Validation loss:%.2f', step, losses_valid['total_loss'])
-                summary_writer_valid.set_as_default()
-                for k, metric in avg_losses_valid.items():
-                    tf.summary.scalar('losses/{}'.format(k), metric.result(), step=step)
-                    metric.reset_states()
-                summary_writer_valid.flush()
-                summary_writer.set_as_default()
+        
+        # Write validation summaries
+        if valid and step % steps_per_summary_valid == 0:
+            losses_valid = get_valid_losses(trainer.model, data_provider_valid)
+            for k, v in losses_valid.items():
+                avg_losses_valid[k].update_state(v)
+            logging.info('Step:%d Validation loss:%.2f', step, losses_valid['total_loss'])
+            summary_writer_valid.set_as_default()
+            for k, metric in avg_losses_valid.items():
+                tf.summary.scalar('losses/{}'.format(k), metric.result(), step=step)
+                metric.reset_states()
+            summary_writer_valid.flush()
+            summary_writer.set_as_default()
 
     logging.info('Training Finished!')
 
@@ -155,6 +159,7 @@ def main(argv):
         #try:
         train(data_provider, trainer, batch_size=FLAGS.batch_size,
                                           steps_per_summary=FLAGS.steps_per_summary,
+                                          steps_per_summary_valid=FLAGS.steps_per_summary_valid,
                                           steps_per_save=FLAGS.steps_per_save,
                                           model_dir=FLAGS.checkpoint_dir,
                                           valid=FLAGS.valid,
