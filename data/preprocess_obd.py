@@ -29,6 +29,7 @@ flags.DEFINE_enum("engine_type", "four-stroke", ["four-stroke", "two-stroke"], "
 flags.DEFINE_string("f0_path", None, "Path to f0 array, if it has been estimated previously.")
 flags.DEFINE_list("plots", ["obd", "f0-rpm", "f0-audio", "data"], "Which plots to show.")
 flags.DEFINE_string("plot_mode", "save", "Whether to save or show plots.")
+flags.DEFINE_bool("skip_f0_sync", False, "Whether to skip synchronization of f0 with the audio using CREPE.")
 
 def preprocess_obd_data(c_list, t0=None):
     '''Preprocess OBD data.'''
@@ -132,10 +133,14 @@ def main(argv):
     f0_rpm = rpm_scale*c_interp["RPM"](f0_rpm_times)
 
     # Find lag between f0 and RPM
-    logging.info("Calculating lag between f0 and RPM...")
-    xcorr = correlate(f0 - np.mean(f0), f0_rpm - np.mean(f0_rpm))
-    lag = xcorr.argmax() - (len(f0_rpm) - 1)
-    logging.info("Found lag: %d frames (%.3f seconds)" % (lag, lag/f0_frame_rate))
+    if not FLAGS.skip_f0_sync:
+        logging.info("Calculating lag between f0 and RPM...")
+        xcorr = correlate(f0 - np.mean(f0), f0_rpm - np.mean(f0_rpm))
+        lag = xcorr.argmax() - (len(f0_rpm) - 1)
+        logging.info("Found lag: %d frames (%.3f seconds)" % (lag, lag/f0_frame_rate))
+    else:
+        logging.info("Will not sync f0 and RPM. Uses lag 0.")
+        lag = 0
     if "f0-rpm" in FLAGS.plots:
         logging.info("Plotting RPM alignment...")
         _, axes = plt.subplots(2, 1, figsize=(15, 6))
