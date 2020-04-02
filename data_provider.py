@@ -24,6 +24,9 @@ class DataProvider:
         self.input_rate = metadata["input_rate"]
         self.input_keys = metadata.get("input_keys", ["f0"])
         self.n_samples = metadata["n_samples"]
+        self.n_samples_train = metadata.get("n_samples_train", None)
+        self.n_samples_valid = metadata.get("n_samples_valid", None)
+        self.n_samples_test = metadata.get("n_samples_test", None)
         self.example_secs = metadata["example_secs"]
         self.hop_secs = metadata["hop_secs"]
         self.audio_length = self.example_secs * self.audio_rate
@@ -50,10 +53,16 @@ class DataProvider:
 
 class TFRecordProvider(DataProvider):
     '''Class for handling data stored in TFRecords.'''
-    def __init__(self, data_dir=None):
+    def __init__(self, data_dir=None, split="all"):
         '''TFRecordProvider constructor.'''
         super(TFRecordProvider, self).__init__(data_dir)
-        self.file_pattern = os.path.join(self.data_dir, "*.tfrecord")
+        if split not in ["all", "train", "valid", "test"]:
+            raise ValueError("split must be either all, train, valid or test.")
+        if split == "all":
+            file_name = "*.tfrecord"
+        else:
+            file_name = "*%s.tfrecord" % split
+        self.file_pattern = os.path.join(self.data_dir, file_name)
     
     def get_dataset(self, shuffle=True):
         '''Read dataset from files.'''
