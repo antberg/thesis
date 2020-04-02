@@ -179,5 +179,59 @@ def get_model_builder_from_id(model_id):
             f0_denom=4.0,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
         )
+    if model_id == "200320_1_hpn_ford_large_all":
+        return ModelBuilder(
+            model_id="200320_1_hpn_ford_large_all",
+            data_dir="./data/tfrecord/ford_large_all",
+            checkpoint_dir="./data/weights/200320_1_hpn_ford_large_all",
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
+        )
+    if model_id == "200320_1_hpn_ford_large_almost_all": # PREFIX OF THIS SHOULD BE 200320_2
+        return ModelBuilder(
+            model_id="200320_1_hpn_ford_large_almost_all",
+            data_dir="./data/tfrecord/ford_large_almost_all",
+            checkpoint_dir="./data/weights/200320_1_hpn_ford_large_almost_all",
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
+        )
+    if model_id == "200320_1_hpn_ford_large_idle_vary": # PREFIX OF THIS SHOULD BE 200325
+        return ModelBuilder(
+            model_id="200320_1_hpn_ford_large_idle_vary",
+            data_dir="./data/tfrecord/ford_large_idle_vary",
+            checkpoint_dir="./data/weights/200320_1_hpn_ford_large_idle_vary",
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
+        )
+    if model_id == "200331_1_hpn_ford_large_vary":
+        return ModelBuilder(
+            model_id="200331_1_hpn_ford_large_vary",
+            data_dir="./data/tfrecord/ford_large/vary",
+            checkpoint_dir="./data/weights/200331_1_hpn_ford_large_vary",
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
+        )
+    if model_id == "200402_1_ford_split":
+        return ModelBuilder(
+            model_id="200402_1_ford_split",
+            data_dir="./data/tfrecord/ford_osc_stitch_split",
+            checkpoint_dir="./data/weights/200402_1_ford_split",
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
+        )
+    if model_id == "200402_2_ford_large_disjoint":
+        return ModelBuilder(
+            model_id="200402_2_ford_large_disjoint",
+            data_dir="./data/tfrecord/ford_large_disjoint_all",
+            checkpoint_dir="./data/weights/200402_2_ford_large_disjoint",
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
+        )
     else:
         raise ValueError("%s is not a valid model id." % model_id)
