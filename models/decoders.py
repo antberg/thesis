@@ -4,6 +4,7 @@ Classes for decoder models that generate synthesizer parameters given some input
 import tensorflow as tf
 from ddsp.training.decoders import Decoder
 from ddsp.training import nn
+from ddsp.core import make_iterable
 
 class F0RnnFcDecoder(Decoder):
     '''
@@ -54,7 +55,6 @@ class MultiInputRnnFcDecoder(Decoder):
     def __init__(self,
                  rnn_channels=512,
                  rnn_type="gru",
-                 n_rnn=1,
                  ch=512,
                  layers_per_stack=3,
                  input_keys=["f0_scaled", "osc_scaled"],
@@ -68,10 +68,11 @@ class MultiInputRnnFcDecoder(Decoder):
         self.stacks = []
         for _ in range(self.n_in):
             self.stacks.append(stack())
-        self.n_rnn = n_rnn
-        self.rnn = [nn.rnn(rnn_channels, rnn_type)]
-        for _ in range(self.n_rnn-1):
-            self.rnn.append(nn.rnn(rnn_channels, rnn_type))
+        rnn_channels = make_iterable(rnn_channels)
+        self.n_rnn = len(rnn_channels)
+        self.rnn = [nn.rnn(rnn_channels[0], rnn_type)]
+        for i in range(self.n_rnn-1):
+            self.rnn.append(nn.rnn(rnn_channels[i+1], rnn_type))
         self.out_stack = stack()
         self.dense_out = nn.dense(self.n_out)
 
