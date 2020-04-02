@@ -88,11 +88,11 @@ def train(data_provider,
             for k, metric in avg_losses.items():
                 tf.summary.scalar('losses/{}'.format(k), metric.result(), step=step)
                 metric.reset_states()
+            summary_writer.flush()
 
         # Save Model and evaluate on validation set.
         if step % steps_per_save == 0:
             trainer.save(model_dir) 
-            summary_writer.flush()
         
         # Write validation summaries
         if valid and step % steps_per_summary_valid == 0:
