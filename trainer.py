@@ -18,14 +18,25 @@ flags.DEFINE_integer("batch_size", 32, "Batch size.")
 flags.DEFINE_integer("steps_per_summary", 1, "Training steps per summary.")
 flags.DEFINE_integer("steps_per_save", 10, "Training steps per checkpoint save.")
 flags.DEFINE_list("devices", None, "Training devices.")
+flags.DEFINE_bool("valid", False, "Whether to store validation metrics in summary.")
+
+def get_valid_losses(model, data_provider):
+    batch_size = min(128, data_provider.n_samples_valid)
+    dataset = data_provider.get_batch(batch_size, shuffle=True, repeats=1)
+    #dataset = trainer.distribute_dataset(dataset)
+    batch = next(iter(dataset))
+    _ = model(batch)
+    return model.losses_dict
 
 def train(data_provider,
           trainer,
           batch_size=32,
           num_steps=1000000,
-          steps_per_summary=300,
+          steps_per_summary=10,
           steps_per_save=300,
-          model_dir='~/tmp/ddsp'):
+          model_dir='~/tmp/ddsp',
+          valid=False,
+          data_provider_valid=None):
     """Main training loop."""
     # Get a distributed dataset.
     dataset = data_provider.get_batch(batch_size, shuffle=True, repeats=-1)
@@ -38,53 +49,59 @@ def train(data_provider,
     # Load latest checkpoint if one exists in model_dir.
     trainer.restore(model_dir)
 
-    # Create training loss metrics.
+    # Create training and validation loss metrics.
     avg_losses = {name: tf.keras.metrics.Mean(name=name, dtype=tf.float32)
                   for name in trainer.model.loss_names}
+    if valid:
+        avg_losses_valid = {name: tf.keras.metrics.Mean(name=name, dtype=tf.float32)
+                            for name in trainer.model.loss_names}
 
-    # Set up the summary writer and metrics.
+    # Set up the summary writers and metrics.
     summary_dir = os.path.join(model_dir, 'summaries', 'train')
     summary_writer = tf.summary.create_file_writer(summary_dir)
+    if valid:
+        summary_dir_valid = os.path.join(model_dir, 'summaries', 'valid')
+        summary_writer_valid = tf.summary.create_file_writer(summary_dir_valid)
 
     # Save the gin config.
     write_gin_config(summary_writer, model_dir, trainer.step.numpy())
 
     # Train.
-    with summary_writer.as_default():
-        for _ in range(num_steps):
-            step = trainer.step
+    summary_writer.set_as_default()
+    for _ in range(num_steps):
+        step = trainer.step
 
-            # Take a step.
-            losses = trainer.train_step(dataset_iter)
+        # Take a step.
+        losses = trainer.train_step(dataset_iter)
 
-            # Update metrics.
-            for k, v in losses.items():
-                avg_losses[k].update_state(v)
+        # Update metrics.
+        for k, v in losses.items():
+            avg_losses[k].update_state(v)
 
-            # Log the step.
-            logging.info('Step:%d Loss:%.2f', step, losses['total_loss'])
+        # Log the step.
+        logging.info('Step:%d Loss:%.2f', step, losses['total_loss'])
 
-            # Write Summaries.
-            if step % steps_per_summary == 0:
-                for k, metric in avg_losses.items():
+        # Write Summaries.
+        if step % steps_per_summary == 0:
+            for k, metric in avg_losses.items():
+                tf.summary.scalar('losses/{}'.format(k), metric.result(), step=step)
+                metric.reset_states()
+
+        # Save Model and evaluate on validation set.
+        if step % steps_per_save == 0:
+            trainer.save(model_dir) 
+            summary_writer.flush()
+            if valid:
+                losses_valid = get_valid_losses(trainer.model, data_provider_valid)
+                for k, v in losses_valid.items():
+                    avg_losses_valid[k].update_state(v)
+                logging.info('Step:%d Validation loss:%.2f', step, losses_valid['total_loss'])
+                summary_writer_valid.set_as_default()
+                for k, metric in avg_losses_valid.items():
                     tf.summary.scalar('losses/{}'.format(k), metric.result(), step=step)
                     metric.reset_states()
-                '''for loss in trainer.model.loss_objs:
-                    if loss.name == "mel_spectral_loss":
-                        for i, fft_layer in enumerate(loss.most_recent_logmags):
-                            tf.summary.image("mel_spectrum_%d_target" % i,
-                                             fft_layer["target"][:,:,:,tf.newaxis],
-                                             step=step,
-                                             description=str(fft_layer["meta"]))
-                            tf.summary.image("mel_spectrum_%d_value" % i,
-                                             fft_layer["value"][:,:,:,tf.newaxis],
-                                             step=step,
-                                             description=str(fft_layer["meta"]))'''
-
-            # Save Model.
-            if step % steps_per_save == 0:
-                trainer.save(model_dir)
-                summary_writer.flush()
+                summary_writer_valid.flush()
+                summary_writer.set_as_default()
 
     logging.info('Training Finished!')
 
@@ -98,7 +115,8 @@ def main(argv):
         model = model_builder.build()
 
     logging.info("Loading data from '%s'..." % FLAGS.data_dir)
-    data_provider = TFRecordProvider(FLAGS.data_dir)
+    data_provider = TFRecordProvider(FLAGS.data_dir, split="train" if FLAGS.valid else "all")
+    data_provider_valid = TFRecordProvider(FLAGS.data_dir, split="valid") if FLAGS.valid else None
     
     if FLAGS.model_id is None:
         if FLAGS.checkpoint_dir is None:
@@ -125,21 +143,27 @@ def main(argv):
     summary_dir = os.path.join(FLAGS.checkpoint_dir, "summaries", "train")
     if not os.path.exists(summary_dir):
         os.makedirs(summary_dir)
+    if FLAGS.valid:
+        summary_dir_valid = os.path.join(FLAGS.checkpoint_dir, "summaries", "valid")
+        if not os.path.exists(summary_dir_valid):
+            os.makedirs(summary_dir_valid)
     strategy = tf.distribute.MirroredStrategy(devices=FLAGS.devices)
     trainer = Trainer(model, strategy)
 
     logging.info("Initializing training...")
     while True:
-        try:
-            train(data_provider, trainer, batch_size=FLAGS.batch_size,
+        #try:
+        train(data_provider, trainer, batch_size=FLAGS.batch_size,
                                           steps_per_summary=FLAGS.steps_per_summary,
                                           steps_per_save=FLAGS.steps_per_save,
-                                          model_dir=FLAGS.checkpoint_dir)
-        except KeyboardInterrupt:
+                                          model_dir=FLAGS.checkpoint_dir,
+                                          valid=FLAGS.valid,
+                                          data_provider_valid=data_provider_valid)
+        '''except KeyboardInterrupt:
             logging.info("Registered control-C event, stopping.")
             break
         except:
-            logging.info("An error ocurred, reinitializing training from last checkpoint...")
+            logging.info("An error ocurred, reinitializing training from last checkpoint...")'''
 
 if __name__ == "__main__":
     app.run(main)
