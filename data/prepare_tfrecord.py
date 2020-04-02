@@ -22,13 +22,14 @@ from constants import DEFAULT_WINDOW_SECS, DEFAULT_HOP_SECS
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("data_dir", None, "Directory of training data.")
-flags.DEFINE_string("tfrecord_path", None, "Save path of created TFRecord.")
+flags.DEFINE_string("tfrecord_name", None, "Name of TFRecords dataset.")
 flags.DEFINE_integer("window_secs", DEFAULT_WINDOW_SECS, "Length of training windows in seconds.")
 flags.DEFINE_integer("hop_secs", DEFAULT_HOP_SECS, "Size of training hops in seconds.")
 flags.DEFINE_bool("shuffle", False, "Shuffle the windows.")
 flags.DEFINE_bool("inspect_windows", False, "Inspect each window manually for debugging.")
 flags.DEFINE_bool("osc", False, "Whether to generate a synchronized oscillating signal.")
 flags.DEFINE_bool("pad", False, "Whether to pad the end of the recording with zeros.")
+flags.DEFINE_list("split", [80, 10, 10], "Train-validation-test split of data.")
 
 def get_float_feature(value):
     '''Returns a float_list from a float / double.'''
@@ -93,12 +94,14 @@ def _sine_stitch(y1, y2):
 def get_synchronized_osc(audio, f0, sample_rate, frame_rate,
                                                  window_secs=.05,
                                                  hop_secs=.05,
-                                                 f_cutoff=200):
+                                                 f_cutoff=None):
     '''
     Generate an oscillating signal based on f0 phase-synchronized with the
     audio.
     '''
     # Low-pass filter audio
+    if f_cutoff is None:
+        f_cutoff = 1.5*np.max(f0)
     audio_lopass = pass_filter(audio, sample_rate, f_cutoff, btype="low")
     
     # Upsample f0 to audio sample rate to get maximum-precision lag
@@ -147,8 +150,16 @@ def get_synchronized_osc(audio, f0, sample_rate, frame_rate,
             osc[window_end-2*window_size:window_end] = _sine_stitch(
                 osc[window_end-2*window_size:window_end-window_size], 
                 osc_window)
-
+            #osc[window_end-window_size:window_end] = osc_window
+    
+    '''t_audio = np.arange(0.0, len(audio_lopass))/sample_rate
+    plt.plot(t_audio, audio_lopass)
+    osc = osc > 0
+    t_osc = np.arange(0.0, len(osc))/frame_rate
+    plt.plot(t_osc, np.max(np.abs(audio_lopass))*osc)
+    plt.show()'''
     osc = _resample(osc, sample_rate, frame_rate)
+
     return osc
 
 def get_n_windows(sequence, rate, window_secs, hop_secs, pad=False):
@@ -159,7 +170,7 @@ def get_n_windows(sequence, rate, window_secs, hop_secs, pad=False):
         n_windows += 1
     return n_windows
 
-def split_data(data, window_secs, hop_secs, shuffle=False, generate_osc=False, pad=False):
+def generate_windows(data, window_secs, hop_secs, shuffle=False, generate_osc=False, pad=False):
     '''
     Generator function for generating windows of training examples.
     Inspired by https://github.com/magenta/ddsp/blob/master/ddsp/training/data_preparation/prepare_tfrecord_lib.py
@@ -192,6 +203,28 @@ def split_data(data, window_secs, hop_secs, shuffle=False, generate_osc=False, p
         else:
             yield {"audio": audio, "f0": f0}
 
+def split_ids(n_windows_total, splits):
+    n_windows = {s: 0 for s in ["total", "train", "valid", "test"]}
+    n_windows["total"] = n_windows_total
+    for split in ["valid", "test"]:
+        n_windows[split] = int(splits[split] * n_windows["total"])
+    n_windows["train"] = n_windows["total"] - n_windows["valid"] - n_windows["test"]
+    ids = dict()
+    ids["total"] = list(range(n_windows["total"]))
+    random.shuffle(ids["total"])
+    ids_begin = 0
+    for split in ["train", "valid", "test"]:
+        ids_end = ids_begin + n_windows[split]
+        ids[split] = ids["total"][ids_begin:ids_end]
+        ids_begin = ids_end
+    return ids
+
+def get_split_from_id(i, ids):
+    for split in ["train", "valid", "test"]:
+        if i in ids[split]:
+            return split
+    raise ValueError("%d is in none of the splits!" % i)
+
 def get_serialized_example(data):
     '''Get serialized tf.train.Example from dictionary of floats.'''
     example = tf.train.Example(
@@ -207,26 +240,40 @@ def main(argv):
     # Check preconditions
     if FLAGS.data_dir is None:
         raise ValueError("Data directory must be set (using the --data_dir flag).")
-    tfrecord_path = FLAGS.tfrecord_path
-    if tfrecord_path is None:
-        tfrecord_path = os.path.join("./tfrecord", get_timestamp(), "data.tfrecord")
-        logging.info("No save path for the TFRecord specified, will save to '%s'." % tfrecord_path)
-    elif os.path.exists(tfrecord_path):
-        raise FileExistsError("'%s' already exists." % tfrecord_path)
-    tfrecord_dir = os.path.dirname(tfrecord_path)
+    if len(FLAGS.split) != 3:
+        raise ValueError("split must have 3 elements (train, valid, test).")
+    splits = {split: float(percent) / 100
+              for split, percent in zip(["train", "valid", "test"], FLAGS.split)}
+    if sum(splits.values()) != 1.0:
+        raise ValueError("split must sum to 100.")
+    if FLAGS.hop_secs < FLAGS.window_secs and splits["train"] < 1.0:
+        raise ValueError("Windows must be disjoint (i.e. hop_secs >= window_secs) " +\
+                         "when splitting data into train-valid-test or there " +\
+                         "will be training samples in valid-test datasets.")
+
+    # Set paths to .tfrecord files
+    tfrecord_name = get_timestamp() if FLAGS.tfrecord_name is None else FLAGS.tfrecord_name
+    tfrecord_dir = os.path.join("./tfrecord", tfrecord_name)
     if not os.path.exists(tfrecord_dir):
         os.makedirs(tfrecord_dir)
+    tfrecord_paths = {split: os.path.join(tfrecord_dir, "%s.tfrecord" % split)
+                      for split in ["train", "valid", "test"]}
+    logging.info("Will save TFRecords to '%s'." % tfrecord_dir)
 
+    # Paths to data
     logging.info("Will load pickled data from '%s'." % FLAGS.data_dir)
     data_path_format = os.path.join(FLAGS.data_dir, "*.pickle")
+
+    # Split each data file into windows and write to .tfrecord files
+    audio_rate = -1
+    input_rate = -1
+    n_samples = {split: 0 for split in ["total", "train", "valid", "test"]}
     window_secs = FLAGS.window_secs
     hop_secs = FLAGS.hop_secs
     logging.info("Will split training examples into %d second windows with %d second hops." % (window_secs, hop_secs))
-
-    audio_rate = -1
-    input_rate = -1
-    n_samples = 0
-    with tf.io.TFRecordWriter(tfrecord_path) as writer:
+    with tf.io.TFRecordWriter(tfrecord_paths["train"]) as writer_train, \
+         tf.io.TFRecordWriter(tfrecord_paths["valid"]) as writer_valid, \
+         tf.io.TFRecordWriter(tfrecord_paths["test"]) as writer_test:
         for data_path in glob.glob(data_path_format):
             # Load example
             logging.info("Loading '%s'..." % data_path)
@@ -241,14 +288,31 @@ def main(argv):
                 raise ValueError("Data must have the same audio sample rate.")
             elif input_rate != data["frame_rate"]:
                 raise ValueError("Data must have the same input sample rate.")
+
+            # Split samples into train, valid and test
+            n_windows_total = get_n_windows(data["audio"], audio_rate, window_secs, hop_secs, FLAGS.pad)
+            ids = split_ids(n_windows_total, splits)
+            n_windows = {s: len(i) for s, i in ids.items()}
+            for split in ["total", "train", "valid", "test"]:
+                n_samples[split] += n_windows[split]
+            logging.info("Will use %s%%, %s%%, %s%% splits for train, valid, test." % tuple(FLAGS.split))
+            logging.info("Will split %d windows into %d, %d, %d windows for train, valid, test." % tuple(n_windows.values()))
             
-            # Split example into windows and write to TFRecord
-            logging.info("Splitting into windows and writing to TFRecord...")
-            n_windows = get_n_windows(data["audio"], audio_rate, window_secs, hop_secs, FLAGS.pad)
-            n_samples += n_windows
-            for i, window in enumerate(split_data(data, window_secs, hop_secs, FLAGS.shuffle, FLAGS.osc, FLAGS.pad)):
-                logging.info("Processing window %d out of %d..." % (i+1, n_windows))
-                writer.write(get_serialized_example(window))
+            # Split example into windows and write to .tfrecord files
+            logging.info("Splitting into windows and writing to .tfrecord files...")
+            for i, window in enumerate(generate_windows(data, window_secs, hop_secs, FLAGS.shuffle, FLAGS.osc, FLAGS.pad)):
+                # Write window to given split
+                split = get_split_from_id(i, ids)
+                logging.info("Processing window %d out of %d... (%s)" % (i+1, n_windows["total"], split))
+                serialized_example = get_serialized_example(window)
+                if split == "train":
+                    writer_train.write(serialized_example)
+                elif split == "valid":
+                    writer_valid.write(serialized_example)
+                elif split == "test":
+                    writer_test.write(serialized_example)
+
+                # Inspect window, if applicable
                 if FLAGS.inspect_windows:
                     plt.figure(figsize=(8, 4))
                     plot_audio_f0(window["audio"], audio_rate, window["f0"], input_rate)
@@ -264,7 +328,10 @@ def main(argv):
         "audio_rate": audio_rate,
         "input_rate": input_rate,
         "input_keys": input_keys,
-        "n_samples": n_samples,
+        "n_samples": n_samples["total"],
+        "n_samples_train": n_samples["train"],
+        "n_samples_valid": n_samples["valid"],
+        "n_samples_test": n_samples["test"],
         "example_secs": window_secs,
         "hop_secs": hop_secs
     }
