@@ -47,6 +47,10 @@ class ModelBuilder:
         return self.config.get("n_noise_magnitudes", 65)
     
     @property
+    def n_rnn(self):
+        return self.config.get("n_rnn", 1)
+    
+    @property
     def losses(self):
         return self.config.get("losses", None)
     
@@ -68,6 +72,7 @@ class ModelBuilder:
                                       f0_denom=self.f0_denom,
                                       n_harmonic_distribution=self.n_harmonic_distribution,
                                       n_noise_magnitudes=self.n_noise_magnitudes,
+                                      n_rnn=self.n_rnn,
                                       losses=self.losses,
                                       feature_domain=self.feature_domain)
         elif self.model_type == "osc_f0_rnn_fc_hpn_decoder":
@@ -77,6 +82,7 @@ class ModelBuilder:
                                          f0_denom=self.f0_denom,
                                          n_harmonic_distribution=self.n_harmonic_distribution,
                                          n_noise_magnitudes=self.n_noise_magnitudes,
+                                         n_rnn=self.n_rnn,
                                          losses=self.losses)
         else:
             raise ValueError("%s is not a valid model_type." % self.model_type)
@@ -230,6 +236,17 @@ def get_model_builder_from_id(model_id):
             data_dir="./data/tfrecord/ford_large_disjoint_all",
             checkpoint_dir="./data/weights/200402_2_ford_large_disjoint",
             model_type="osc_f0_rnn_fc_hpn_decoder",
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
+        )
+    if model_id == "200402_3_ford_large_disjoint_2gru":
+        return ModelBuilder(
+            model_id="200402_2_ford_large_disjoint",
+            data_dir="./data/tfrecord/ford_large_disjoint_all",
+            checkpoint_dir="./data/weights/200402_2_ford_large_disjoint",
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            n_harmonic_distribution=100,
+            n_rnn=2,
             f0_denom=4.0,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
         )

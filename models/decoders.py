@@ -13,6 +13,7 @@ class F0RnnFcDecoder(Decoder):
     def __init__(self,
                  rnn_channels=512,
                  rnn_type="gru",
+                 n_rnn=1,
                  ch=512,
                  layers_per_stack=3,
                  output_splits=(("amps", 1), ("harmonic_distribution", 40)),
@@ -22,7 +23,10 @@ class F0RnnFcDecoder(Decoder):
         # Create layers.
         stack = lambda: nn.fc_stack(ch, layers_per_stack)
         self.f0_stack = stack()
-        self.rnn = nn.rnn(rnn_channels, rnn_type)
+        self.n_rnn = n_rnn
+        self.rnn = [nn.rnn(rnn_channels, rnn_type)]
+        for _ in range(self.n_rnn-1):
+            self.rnn.append(nn.rnn(rnn_channels, rnn_type))
         self.out_stack = stack()
         self.dense_out = nn.dense(self.n_out)
 
@@ -33,7 +37,9 @@ class F0RnnFcDecoder(Decoder):
         f = self.f0_stack(f)
 
         # Run an RNN over the latents.
-        x = self.rnn(f)
+        x = self.rnn[0](f)
+        for i in range(self.n_rnn-1):
+            x = self.rnn[i+1](x)
         x = tf.concat([f, x], axis=-1)
 
         # Final processing.
@@ -48,6 +54,7 @@ class MultiInputRnnFcDecoder(Decoder):
     def __init__(self,
                  rnn_channels=512,
                  rnn_type="gru",
+                 n_rnn=1,
                  ch=512,
                  layers_per_stack=3,
                  input_keys=["f0_scaled", "osc_scaled"],
@@ -61,7 +68,10 @@ class MultiInputRnnFcDecoder(Decoder):
         self.stacks = []
         for _ in range(self.n_in):
             self.stacks.append(stack())
-        self.rnn = nn.rnn(rnn_channels, rnn_type)
+        self.n_rnn = n_rnn
+        self.rnn = [nn.rnn(rnn_channels, rnn_type)]
+        for _ in range(self.n_rnn-1):
+            self.rnn.append(nn.rnn(rnn_channels, rnn_type))
         self.out_stack = stack()
         self.dense_out = nn.dense(self.n_out)
 
@@ -80,7 +90,9 @@ class MultiInputRnnFcDecoder(Decoder):
 
         # Run an RNN over the latents.
         x = tf.concat(c, axis=-1)
-        x = self.rnn(x)
+        x = self.rnn[0](x)
+        for i in range(self.n_rnn-1):
+            x = self.rnn[i+1](x)
         x = tf.concat(c + [x], axis=-1)
 
         # Final processing.

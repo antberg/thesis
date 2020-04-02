@@ -20,6 +20,7 @@ class F0RnnFcHPNDecoder(Autoencoder):
                        f0_denom=1.,
                        n_harmonic_distribution=60,
                        n_noise_magnitudes=65,
+                       n_rnn=1,
                        losses=None,
                        feature_domain="freq",
                        name="f0_rnn_fc_hps_decoder"):
@@ -35,6 +36,7 @@ class F0RnnFcHPNDecoder(Autoencoder):
         # Initialize decoder
         decoder = F0RnnFcDecoder(rnn_channels=512,
                                  rnn_type="gru",
+                                 n_rnn=n_rnn,
                                  ch=512,
                                  layers_per_stack=3,
                                  output_splits=(("amps", 1),
@@ -71,6 +73,7 @@ class OscF0RnnFcHPNDecoder(Autoencoder):
                        f0_denom=1.,
                        n_harmonic_distribution=60,
                        n_noise_magnitudes=65,
+                       n_rnn=1,
                        losses=None,
                        name="osc_f0_rnn_fc_hps_decoder"):
         # Initialize preprocessor
@@ -84,6 +87,7 @@ class OscF0RnnFcHPNDecoder(Autoencoder):
         # Initialize decoder
         decoder = MultiInputRnnFcDecoder(rnn_channels=512,
                                          rnn_type="gru",
+                                         n_rnn=n_rnn,
                                          ch=512,
                                          layers_per_stack=3,
                                          input_keys=["f0_sub_scaled", "osc_scaled"],
