@@ -1,5 +1,5 @@
 from data.constants import DEFAULT_WINDOW_SECS, DEFAULT_SAMPLE_RATE, DEFAULT_FRAME_RATE
-from models.models import F0RnnFcHPNDecoder, OscF0RnnFcHPNDecoder
+from models.models import F0RnnFcHPNDecoder, OscF0RnnFcHPNDecoder, OscF0RnnFcHPNTDecoder
 from models.losses import TimeFreqResMelSpectralLoss
 
 class ModelBuilder:
@@ -47,6 +47,10 @@ class ModelBuilder:
         return self.config.get("n_noise_magnitudes", 65)
     
     @property
+    def n_transient_distribution(self):
+        return self.config.get("n_transient_distribution", 200)
+    
+    @property
     def rnn_channels(self):
         return self.config.get("rnn_channels", 512)
     
@@ -92,6 +96,17 @@ class ModelBuilder:
                                          rnn_channels=self.rnn_channels,
                                          input_keys=self.input_keys,
                                          losses=self.losses)
+        elif self.model_type == "osc_f0_rnn_fc_hpnt_decoder":
+            model = OscF0RnnFcHPNTDecoder(window_secs=self.window_secs,
+                                          audio_rate=self.audio_rate,
+                                          input_rate=self.input_rate,
+                                          f0_denom=self.f0_denom,
+                                          n_harmonic_distribution=self.n_harmonic_distribution,
+                                          n_noise_magnitudes=self.n_noise_magnitudes,
+                                          n_transient_distribution=self.n_transient_distribution,
+                                          rnn_channels=self.rnn_channels,
+                                          input_keys=self.input_keys,
+                                          losses=self.losses)
         else:
             raise ValueError("%s is not a valid model_type." % self.model_type)
 
@@ -267,6 +282,28 @@ def get_model_builder_from_id(model_id):
             n_harmonic_distribution=100,
             input_keys=["f0_sub_scaled"],
             rnn_channels=[512, 512],
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
+        )
+    if model_id == "200403_1_hpnt_ford_mini":
+        return ModelBuilder(
+            model_id="200403_1_hpnt_ford_mini",
+            data_dir="./data/tfrecord/ford_mini",
+            checkpoint_dir="./data/weights/200403_1_hpnt_ford_mini",
+            model_type="osc_f0_rnn_fc_hpnt_decoder",
+            n_transient_distribution=400,
+            input_keys=["f0_sub_scaled"],
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
+        )
+    if model_id == "200403_2_hpnt_osc_ford_mini":
+        return ModelBuilder(
+            model_id="200403_2_hpnt_osc_ford_mini",
+            data_dir="./data/tfrecord/ford_mini",
+            checkpoint_dir="./data/weights/200403_2_hpnt_osc_ford_mini",
+            model_type="osc_f0_rnn_fc_hpnt_decoder",
+            n_transient_distribution=400,
+            input_keys=["f0_sub_scaled", "osc_scaled"],
             f0_denom=4.0,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
         )
