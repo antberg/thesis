@@ -62,6 +62,7 @@ class TFRecordProvider(DataProvider):
             file_name = "*.tfrecord"
         else:
             file_name = "*%s.tfrecord" % split
+        self.split = split
         self.file_pattern = os.path.join(self.data_dir, file_name)
     
     def get_dataset(self, shuffle=True):
