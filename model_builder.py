@@ -279,7 +279,7 @@ def get_model_builder_from_id(model_id):
             data_dir="./data/tfrecord/ford_large_disjoint_all",
             checkpoint_dir="./data/weights/200402_4_ford_large_disjoint_f0_2gru",
             model_type="osc_f0_rnn_fc_hpn_decoder",
-            n_harmonic_distribution=100,
+            n_harmonic_distribution=60,
             input_keys=["f0_sub_scaled"],
             rnn_channels=[512, 512],
             f0_denom=4.0,
