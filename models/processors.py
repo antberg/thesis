@@ -127,3 +127,33 @@ class HarmonicPlusNoisePlusTransients(ProcessorGroup):
         transient_signal = dag_outputs["transients"]["signal"]
         signal = self.get_signal(dag_outputs)
         return signal'''
+
+class HarmonicPlusTransients(ProcessorGroup):
+    '''Spectral modeling synthesis (SMS) with harmonic sinusoids.'''
+    def __init__(self, window_secs=None, audio_rate=None, input_rate=None, name="harmonic_plus_transients"):
+        if window_secs is None:
+            raise ValueError("Length of windows (window_secs) must be set.")
+        if audio_rate is None:
+            raise ValueError("Audio sample rate (audio_rate) must be set.")
+        if input_rate is None:
+            raise ValueError("Input sample rate (input_rate) must be set.")
+        self.window_secs = window_secs
+        self.audio_rate = audio_rate
+        self.input_rate = input_rate
+        self.n_samples = int(window_secs * audio_rate)
+        self.additive = Additive(n_samples=self.n_samples, sample_rate=self.audio_rate, name="additive")
+        self.transients = Transients(n_samples=self.n_samples, sample_rate=self.audio_rate, name="transients")
+        self.hpt = Add(name="hpt")
+        dag = [(self.additive, ["amps", "harmonic_distribution", "f0"]),
+               (self.transients, ["transient_amps", "transient_distribution"]),
+               (self.hpt, ["additive/signal", "transients/signal"])]
+        super(HarmonicPlusTransients, self).__init__(dag, name)
+
+    '''#TEMP CODE FOR INSPECTING ADDITIVE AND SUBTRACTIVE COMPONENTS
+    def call(self, dag_inputs):
+        dag_outputs = self.get_controls(dag_inputs)
+
+        additive_signal = dag_outputs["additive"]["signal"]
+        transient_signal = dag_outputs["transients"]["signal"]
+        signal = self.get_signal(dag_outputs)
+        return additive_signal'''
