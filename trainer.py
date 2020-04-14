@@ -21,8 +21,10 @@ flags.DEFINE_integer("steps_per_save", 10, "Training steps per checkpoint save."
 flags.DEFINE_list("devices", None, "Training devices.")
 flags.DEFINE_bool("valid", False, "Whether to store validation metrics in summary.")
 
+MAX_VALID_BATCH_SIZE = 4#128
+
 def get_valid_losses(model, data_provider):
-    batch_size = min(128, data_provider.n_samples_valid)
+    batch_size = min(MAX_VALID_BATCH_SIZE, data_provider.n_samples_valid)
     dataset = data_provider.get_batch(batch_size, shuffle=True, repeats=1)
     #dataset = trainer.distribute_dataset(dataset)
     batch = next(iter(dataset))
