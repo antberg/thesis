@@ -5,6 +5,8 @@ from ddsp.spectral_ops import F0_RANGE
 from ddsp.core import resample, hz_to_midi, oscillator_bank
 
 F0_SUB_RANGE = 1000 # 1000 Mel = 1000 Hz, which is a lot higher than most f0 / n_cyl
+MAX_F0_HZ = 138.43 # From the ford_large dataset
+F0_RANGE_MEL = hz_to_mel(MAX_F0_HZ)
 
 def hz_to_mel(f):
     return 1127 * tf.math.log(1 + f/700)
@@ -78,7 +80,7 @@ class OscF0Preprocessor(Preprocessor):
 
     def _default_processing(self, features):
         '''Always resample to time_steps and scale f0 signal.'''
-        for k in ["f0", "osc"]:
+        for k in ["f0", "osc", "osc_sub", "phase", "phase_unwrapped"]:
             if features.get(k, None) is not None:
                 features[k] = at_least_3d(features[k])
                 features[k] = resample(features[k], n_timesteps=self.time_steps)
@@ -88,15 +90,18 @@ class OscF0Preprocessor(Preprocessor):
         
         # Prepare decoder network inputs
         features["f0_scaled"] = hz_to_midi(features["f0"]) / F0_RANGE
+        features["f0_scaled_mel"] = hz_to_mel(features["f0"]) / F0_RANGE_MEL
         features["f0_sub_scaled"] = hz_to_mel(features["f0_sub"]) / F0_SUB_RANGE
         if features.get("osc", None) is not None:
-            features["osc_scaled"] = .5 + .5*features["osc"]
+            features["osc_scaled"] = 0.5 + 0.5*features["osc"]
         else:
             amplitudes = tf.ones(tf.shape(features["f0"]))
             features["osc"] = oscillator_bank(features["f0"],
                                               amplitudes,
                                               sample_rate=self.rate)[:,:,tf.newaxis]
-            features["osc_scaled"] = .5 + .5*features["osc"]
+            features["osc_scaled"] = 0.5 + 0.5*features["osc"]
+        if features.get("osc_sub", None) is not None:
+            features["osc_sub_scaled"] = 0.5 + 0.5*features["osc_sub"]
 
         return features
 
@@ -129,10 +134,8 @@ class PhaseF0Preprocessor(Preprocessor):
         features["f0_sub"] = features["f0"] / self.denom
         
         # Prepare decoder network inputs
-        max_f0_hz = 138.43 # From the ford_large dataset
-        f0_range_mel = hz_to_mel(max_f0_hz)
         features["f0_scaled"] = hz_to_midi(features["f0"]) / F0_RANGE
-        features["f0_scaled_mel"] = hz_to_mel(features["f0"]) / f0_range_mel
+        features["f0_scaled_mel"] = hz_to_mel(features["f0"]) / F0_RANGE_MEL
         features["f0_sub_scaled"] = hz_to_mel(features["f0_sub"]) / F0_SUB_RANGE
         features["phase_scaled"] = 0.5 + 0.5 * features["phase"] / np.pi
         for k in ["osc", "osc_sub"]:
