@@ -12,10 +12,10 @@ import numpy as np
 import tensorflow as tf
 from absl import app, flags, logging
 import matplotlib.pyplot as plt
-import sounddevice as sd
+#import sounddevice as sd
 from ddsp.core import oscillator_bank
 from scipy.interpolate import interp1d
-from scipy.signal import correlate
+from scipy.signal import correlate, hilbert
 
 from util import plot_audio_f0, get_timestamp, pass_filter
 from constants import DEFAULT_WINDOW_SECS, DEFAULT_HOP_SECS
@@ -28,6 +28,9 @@ flags.DEFINE_integer("hop_secs", DEFAULT_HOP_SECS, "Size of training hops in sec
 flags.DEFINE_bool("shuffle", False, "Shuffle the windows.")
 flags.DEFINE_bool("inspect_windows", False, "Inspect each window manually for debugging.")
 flags.DEFINE_bool("osc", False, "Whether to generate a synchronized oscillating signal.")
+flags.DEFINE_bool("osc_sub", False, "Whether to generate a synchronized oscillating signal with of a subharmonic to f0.")
+flags.DEFINE_float("osc_sub_denom", 4.0, "The denominator to divide f0 with for the oscillating subharmonic.")
+flags.DEFINE_bool("phase", False, "Whether to generate a synchronized phase signal.")
 flags.DEFINE_bool("pad", False, "Whether to pad the end of the recording with zeros.")
 flags.DEFINE_list("split", [80, 10, 10], "Train-validation-test split of data.")
 
@@ -59,18 +62,18 @@ def _resample(y, fs_old, fs_new, interp_method="linear"):
 
 def _get_first_extremum(y):
     mono = np.diff(y) < 0
-    extr_type = "min"
     if mono[0]:
         mono = ~mono
-        extr_type = "max"
-    return np.argmax(mono), extr_type
+    i = np.argmax(mono)
+    extr_type = "max" if y[i] > 0 else "min"
+    return i, extr_type
 
 def _get_second_extremum(y):
     i, _ = _get_first_extremum(y)
     i_new, extr_type = _get_first_extremum(y[i:])
     return i+i_new, extr_type
 
-def _sine_stitch(y1, y2):
+def _sine_stitch(y1, y2, f=None):
     '''Stitch together two sines'''
     y = np.concatenate((y1, y2))
 
@@ -85,8 +88,17 @@ def _sine_stitch(y1, y2):
     # Create sine stitch
     n_samples = i2 - i1
     n = np.arange(0, n_samples)
-    period = n_samples if type1 == type2 else 2*n_samples
-    phi = -np.pi/2 if type1 == "max" else np.pi/2
+    if f is None:
+        period = n_samples if type1 == type2 else 2*n_samples
+    else:
+        if type1 == type2:
+            period = n_samples
+        else:
+            period_opts = np.array([2*n_samples/3, 2*n_samples])
+            period_diff = np.abs(period_opts - 1/f[i1])
+            period_id = np.argmin(period_diff)
+            period = period_opts[period_id]
+    phi = np.pi/2 if type1 == "max" else -np.pi/2
     stitch = np.sin(2*np.pi*n/period + phi)
     y[i1:i2] = stitch
     return y
@@ -94,7 +106,10 @@ def _sine_stitch(y1, y2):
 def get_synchronized_osc(audio, f0, sample_rate, frame_rate,
                                                  window_secs=.05,
                                                  hop_secs=.05,
-                                                 f_cutoff=None):
+                                                 f_cutoff=None,
+                                                 return_phase=False,
+                                                 return_osc_sub=False,
+                                                 osc_sub_denom=4.0):
     '''
     Generate an oscillating signal based on f0 phase-synchronized with the
     audio.
@@ -148,21 +163,59 @@ def get_synchronized_osc(audio, f0, sample_rate, frame_rate,
             osc[:window_size] = osc_window
         else:
             osc[window_end-2*window_size:window_end] = _sine_stitch(
-                osc[window_end-2*window_size:window_end-window_size], 
-                osc_window)
-            #osc[window_end-window_size:window_end] = osc_window
+                osc[window_end-2*window_size:window_end-window_size],
+                osc_window, f0_window/sample_rate)
     
-    '''t_audio = np.arange(0.0, len(audio_lopass))/sample_rate
-    plt.plot(t_audio, audio_lopass)
-    osc = osc > 0
-    t_osc = np.arange(0.0, len(osc))/frame_rate
-    plt.plot(t_osc, np.max(np.abs(audio_lopass))*osc)
-    plt.show()'''
-    osc = _resample(osc, sample_rate, frame_rate)
+    # Compute phase of osc using analytic continuation via the Hilbert transform
+    phase = np.angle(osc + 1j * hilbert(osc))
+    phase_unwrapped = np.unwrap(phase, discont=np.pi/2)
 
+    # Create subharmonic to osc (osc_sub)
+    if return_osc_sub:
+        phase_unwrapped_sub = phase_unwrapped / osc_sub_denom
+        osc_sub = np.sin(phase_unwrapped_sub)
+
+    # Resample to frame rate
+    osc = _resample(osc, sample_rate, frame_rate)
+    if return_phase:
+        phase = _resample(phase, sample_rate, frame_rate)
+        phase_unwrapped = _resample(phase_unwrapped, sample_rate, frame_rate)
+    if return_osc_sub:
+        osc_sub = _resample(osc_sub, sample_rate, frame_rate)
+
+    # Return
+    if return_phase and not return_osc_sub:
+        return osc, phase, phase_unwrapped
+    if not return_phase and return_osc_sub:
+        return osc, osc_sub
+    if return_phase and return_osc_sub:
+        return osc, phase, phase_unwrapped, osc_sub
     return osc
 
+def _get_transient_times(phase, n_transients=500, n_transients_per_period=1, sample_rate=1):
+    '''Get onset times of transients given phase.'''
+    diff_phase_transients = 2 * np.pi / n_transients_per_period
+    t_phase = np.arange(0.0, len(phase))/sample_rate
+    phase_transients = diff_phase_transients * np.arange(1, n_transients + 1)
+    n_shift = int((phase_transients[0] - phase[0]) / diff_phase_transients)
+    phase_transients -= n_shift * diff_phase_transients
+    t_transients = np.interp(phase_transients, phase, t_phase, left=np.nan, right=np.nan)
+    return t_transients
+
+def _unwrap(p):
+    '''Unwrap phase, assuming monotonicity.'''
+    p_uw = p.copy()
+    n = 0
+    for i in range(1, np.size(p)):
+        if p[i] < p[i-1]:
+            n += 1
+        p_uw[i] += 2 * n * np.pi
+    if not np.all(np.diff(p_uw) > 0):
+        logging.warning("WARNING: Unwrapped phase is not monotonic!")
+    return p_uw
+
 def get_n_windows(sequence, rate, window_secs, hop_secs, pad=False):
+    '''Get number of windows for a given sequence.'''
     window_size = int(window_secs * rate)
     hop_size = int(hop_secs * rate)
     n_windows = int(np.ceil((len(sequence) - window_size) / hop_size))
@@ -170,7 +223,9 @@ def get_n_windows(sequence, rate, window_secs, hop_secs, pad=False):
         n_windows += 1
     return n_windows
 
-def generate_windows(data, window_secs, hop_secs, shuffle=False, generate_osc=False, pad=False):
+def generate_windows(data, window_secs, hop_secs, shuffle=False,
+                                                  generate_osc=False,
+                                                  pad=False):
     '''
     Generator function for generating windows of training examples.
     Inspired by https://github.com/magenta/ddsp/blob/master/ddsp/training/data_preparation/prepare_tfrecord_lib.py
@@ -197,13 +252,22 @@ def generate_windows(data, window_secs, hop_secs, shuffle=False, generate_osc=Fa
     
     for audio, f0 in zip(get_windows(data["audio"], data["sample_rate"]),
                          get_windows(data["inputs"]["f0"], data["frame_rate"])):
+        ex_dict = {"audio": audio, "f0": f0}
         if generate_osc:
-            osc = get_synchronized_osc(audio, f0, data["sample_rate"], data["frame_rate"])
-            yield {"audio": audio, "f0": f0, "osc": osc}
-        else:
-            yield {"audio": audio, "f0": f0}
+            osc, p, p_uw, osc_sub = get_synchronized_osc(audio,
+                                                         f0,
+                                                         data["sample_rate"],
+                                                         data["frame_rate"],
+                                                         return_phase=True,
+                                                         return_osc_sub=True,
+                                                         osc_sub_denom=FLAGS.osc_sub_denom)
+            ex_dict.update({"osc": osc, "phase": p, "phase_unwrapped": p_uw, "osc_sub": osc_sub})
+        yield ex_dict
 
 def split_ids(n_windows_total, splits):
+    '''
+    Randomly split example ids into train/valid/test splits. 
+    '''
     n_windows = {s: 0 for s in ["total", "train", "valid", "test"]}
     n_windows["total"] = n_windows_total
     for split in ["valid", "test"]:
@@ -220,6 +284,9 @@ def split_ids(n_windows_total, splits):
     return ids
 
 def get_split_from_id(i, ids):
+    '''
+    Get which split (train/valid/test) an example id belongs to.
+    '''
     for split in ["train", "valid", "test"]:
         if i in ids[split]:
             return split
@@ -265,6 +332,14 @@ def main(argv):
     data_path_format = os.path.join(FLAGS.data_dir, "*.pickle")
 
     # Split each data file into windows and write to .tfrecord files
+    input_keys = ["f0"]
+    if FLAGS.osc:
+        input_keys.append("osc")
+    if FLAGS.phase:
+        input_keys.append("phase")
+        input_keys.append("phase_unwrapped")
+    if FLAGS.osc_sub:
+        input_keys.append("osc_sub")
     audio_rate = -1
     input_rate = -1
     n_samples = {split: 0 for split in ["total", "train", "valid", "test"]}
@@ -300,11 +375,20 @@ def main(argv):
             
             # Split example into windows and write to .tfrecord files
             logging.info("Splitting into windows and writing to .tfrecord files...")
-            for i, window in enumerate(generate_windows(data, window_secs, hop_secs, FLAGS.shuffle, FLAGS.osc, FLAGS.pad)):
+            windows = generate_windows(data, window_secs, hop_secs, shuffle=FLAGS.shuffle,
+                                                                    generate_osc=FLAGS.osc,
+                                                                    pad=FLAGS.pad)
+            for i, window in enumerate(windows):
+                logging.info("Processing window %d out of %d... (%s)" % (i+1, n_windows["total"], split))
+                # Remove keys that we don't want to save
+                window_copy = window.copy()
+                for key in window.keys():
+                    if key != "audio" and key not in input_keys:
+                        window_copy.pop(key)
+                
                 # Write window to given split
                 split = get_split_from_id(i, ids)
-                logging.info("Processing window %d out of %d... (%s)" % (i+1, n_windows["total"], split))
-                serialized_example = get_serialized_example(window)
+                serialized_example = get_serialized_example(window_copy)
                 if split == "train":
                     writer_train.write(serialized_example)
                 elif split == "valid":
@@ -316,14 +400,22 @@ def main(argv):
                 if FLAGS.inspect_windows:
                     plt.figure(figsize=(8, 4))
                     plot_audio_f0(window["audio"], audio_rate, window["f0"], input_rate)
-                    sd.play(window["audio"], audio_rate)
+                    #sd.play(window["audio"], audio_rate)
+                    _, axes = plt.subplots(len(input_keys), 1)
+                    if len(input_keys) < 2:
+                        key = input_keys[0]
+                        axes.plot(window[key])
+                        axes.set_title(key)
+                    else:
+                        ax_iter = iter(axes)
+                        for key in input_keys:
+                            ax = next(ax_iter)
+                            ax.plot(window[key])
+                            ax.set_title(key)
                     plt.show()
-                    sd.wait()
+                    #sd.wait()
             logging.info("Done with '%s'." % data_path)
     
-    input_keys = ["f0"]
-    if FLAGS.osc:
-        input_keys.append("osc")
     metadata = {
         "audio_rate": audio_rate,
         "input_rate": input_rate,
