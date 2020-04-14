@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 from ddsp.training.preprocessing import Preprocessor, at_least_3d
 from ddsp.spectral_ops import F0_RANGE
 from ddsp.core import resample, hz_to_midi, oscillator_bank
@@ -96,5 +97,46 @@ class OscF0Preprocessor(Preprocessor):
                                               amplitudes,
                                               sample_rate=self.rate)[:,:,tf.newaxis]
             features["osc_scaled"] = .5 + .5*features["osc"]
+
+        return features
+
+class PhaseF0Preprocessor(Preprocessor):
+    '''
+    Preprocessor for f0 and phase features. Scales f0 envelope by converting to
+    Mel scale and normalizing to [0, 1]. Uses phase to determine DCT
+    frequencies of the transients.
+    '''
+    def __init__(self, time_steps=None, denom=1., rate=None):
+        if time_steps is None:
+            raise ValueError("time_steps cannot be None.")
+        super().__init__()
+        self.time_steps = time_steps
+        self.denom = denom
+        self.rate = rate
+
+    def __call__(self, features, training=True):
+        super().__call__(features, training)
+        return self._default_processing(features)
+
+    def _default_processing(self, features):
+        '''Always resample to time_steps and scale input signals.'''
+        for k in ["f0", "phase", "phase_unwrapped", "osc", "osc_sub"]:
+            if features.get(k, None) is not None:
+                features[k] = at_least_3d(features[k])
+                features[k] = resample(features[k], n_timesteps=self.time_steps)
+        
+        # Divide by denom (e.g. number of cylinders in engine to produce subharmonics)
+        features["f0_sub"] = features["f0"] / self.denom
+        
+        # Prepare decoder network inputs
+        max_f0_hz = 138.43 # From the ford_large dataset
+        f0_range_mel = hz_to_mel(max_f0_hz)
+        features["f0_scaled"] = hz_to_midi(features["f0"]) / F0_RANGE
+        features["f0_scaled_mel"] = hz_to_mel(features["f0"]) / f0_range_mel
+        features["f0_sub_scaled"] = hz_to_mel(features["f0_sub"]) / F0_SUB_RANGE
+        features["phase_scaled"] = 0.5 + 0.5 * features["phase"] / np.pi
+        for k in ["osc", "osc_sub"]:
+            if features.get(k, None) is not None:
+                features[k+"_scaled"] = 0.5 + 0.5*features[k]
 
         return features
