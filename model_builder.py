@@ -409,12 +409,15 @@ def get_model_builder_from_id(model_id):
         Test to add an oscillating signal equivalent to f0/n_cyl, i.e. the
         periodicity of the camshaft. Earlier models sound choppy, which this
         might remedy.
+        
+        This models is also the first to use 1-second training windows.
         '''
         return ModelBuilder(
             model_id=model_id,
             data_dir="./data/tfrecord/ford_large_osc_sub_1s",
             checkpoint_dir="./data/weights/%s" % model_id,
             model_type="osc_f0_rnn_fc_hpnt_decoder",
+            window_secs=1,
             n_transient_distribution=100,
             input_keys=["f0_scaled_mel", "osc_sub_scaled"],
             f0_denom=4.0,
