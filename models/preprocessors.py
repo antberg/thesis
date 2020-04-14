@@ -6,10 +6,11 @@ from ddsp.core import resample, hz_to_midi, oscillator_bank
 
 F0_SUB_RANGE = 1000 # 1000 Mel = 1000 Hz, which is a lot higher than most f0 / n_cyl
 MAX_F0_HZ = 138.43 # From the ford_large dataset
-F0_RANGE_MEL = hz_to_mel(MAX_F0_HZ)
 
 def hz_to_mel(f):
     return 1127 * tf.math.log(1 + f/700)
+
+F0_RANGE_MEL = hz_to_mel(MAX_F0_HZ)
 
 class F0Preprocessor(Preprocessor):
     '''
