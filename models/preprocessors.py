@@ -81,7 +81,10 @@ class OscF0Preprocessor(Preprocessor):
 
     def _default_processing(self, features):
         '''Always resample to time_steps and scale f0 signal.'''
-        for k in ["f0", "osc", "osc_sub", "phase", "phase_unwrapped"]:
+        # Make sure inputs have the right dimensions, i.e. [batch_size, n_frames, {context dependent}]
+        for k in ["f0", "phase", "phase_unwrapped", "osc", "osc_sub",
+                  "phase_sub", "phase_unwrapped_sub", "osc_sub_sync",
+                  "phase_unwrapped_sub_sync", "phase_sub_sync"]:
             if features.get(k, None) is not None:
                 features[k] = at_least_3d(features[k])
                 features[k] = resample(features[k], n_timesteps=self.time_steps)
@@ -93,16 +96,20 @@ class OscF0Preprocessor(Preprocessor):
         features["f0_scaled"] = hz_to_midi(features["f0"]) / F0_RANGE
         features["f0_scaled_mel"] = hz_to_mel(features["f0"]) / F0_RANGE_MEL
         features["f0_sub_scaled"] = hz_to_mel(features["f0_sub"]) / F0_SUB_RANGE
-        if features.get("osc", None) is not None:
-            features["osc_scaled"] = 0.5 + 0.5*features["osc"]
-        else:
+        for k in ["phase", "phase_sub", "phase_sub_sync"]:
+            if features.get(k, None) is not None:
+                features[k+"_scaled"] = 0.5 + 0.5 * features[k] / np.pi
+        for k in ["osc", "osc_sub", "osc_sub_sync"]:
+            if features.get(k, None) is not None:
+                features[k+"_scaled"] = 0.5 + 0.5 * features[k]
+        
+        # Generate osc from f0 if it is missing
+        if features.get("osc", None) is None:
             amplitudes = tf.ones(tf.shape(features["f0"]))
             features["osc"] = oscillator_bank(features["f0"],
                                               amplitudes,
                                               sample_rate=self.rate)[:,:,tf.newaxis]
             features["osc_scaled"] = 0.5 + 0.5*features["osc"]
-        if features.get("osc_sub", None) is not None:
-            features["osc_sub_scaled"] = 0.5 + 0.5*features["osc_sub"]
 
         return features
 
