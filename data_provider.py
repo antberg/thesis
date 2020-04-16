@@ -19,6 +19,7 @@ class DataProvider:
         metadata_path = os.path.join(data_dir, "metadata.pickle")
         with open(metadata_path, "rb") as f:
             metadata = pickle.load(f)
+        self.metadata = metadata
         self.data_dir = data_dir
         self.audio_rate = metadata["audio_rate"]
         self.input_rate = metadata["input_rate"]
