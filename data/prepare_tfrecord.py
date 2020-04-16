@@ -17,7 +17,7 @@ from ddsp.core import oscillator_bank
 from scipy.interpolate import interp1d
 from scipy.signal import correlate, hilbert
 
-from util import plot_audio_f0, get_timestamp, pass_filter
+from util import plot_audio_f0, get_timestamp, pass_filter, get_serialized_example
 from constants import DEFAULT_WINDOW_SECS, DEFAULT_HOP_SECS
 
 FLAGS = flags.FLAGS
@@ -174,23 +174,55 @@ def get_synchronized_osc(audio, f0, sample_rate, frame_rate,
     if return_osc_sub:
         phase_unwrapped_sub = phase_unwrapped / osc_sub_denom
         osc_sub = np.sin(phase_unwrapped_sub)
+    
+    # Create synchronized subharmonic to osc (osc_sub_sync)
+    if return_osc_sub:
+        phase_unwrapped_sub = phase_unwrapped / osc_sub_denom
+        phase_sub = _wrap(phase_unwrapped_sub)
+
+        # Generate a smoothed high-pass filtered version of the audio and find its peak
+        audio_hipass = pass_filter(audio, sample_rate, 15e3, btype="high")
+        audio_hipass_smooth = np.zeros(audio_hipass.shape)
+        audio_hipass_abs = np.abs(audio_hipass)
+        for i in range(1, audio_hipass.size):
+            alpha = .995
+            audio_hipass_smooth[i] = alpha*audio_hipass_smooth[i-1] + (1-alpha)*audio_hipass_abs[i-1]
+        i_max = np.argmax(audio_hipass_smooth)
+        
+        # Find the best phase-shifted version of osc_sub out of the int(osc_sub_denom) possibilities
+        phase_max = -np.inf
+        phase_unwrapped_sub_max = None
+        osc_sub_max = None
+        for n in range(int(osc_sub_denom)):
+            phase_unwrapped_sub_temp = phase_unwrapped_sub + n * 2 * np.pi / osc_sub_denom
+            osc_sub_temp = np.sin(phase_unwrapped_sub_temp)
+            phase_temp = np.angle(osc_sub_temp + 1j * hilbert(osc_sub_temp))
+            if phase_temp[i_max] > phase_max:
+                phase_max = phase_temp[i_max]
+                phase_unwrapped_sub_max = phase_unwrapped_sub_temp
+                osc_sub_max = osc_sub_temp
+        phase_unwrapped_sub_sync = phase_unwrapped_sub_max
+        osc_sub_sync = osc_sub_max
+        phase_sub_sync = _wrap(phase_unwrapped_sub_sync)
 
     # Resample to frame rate
-    osc = _resample(osc, sample_rate, frame_rate)
+    data = {"osc": _resample(osc, sample_rate, frame_rate)}
     if return_phase:
-        phase = _resample(phase, sample_rate, frame_rate)
-        phase_unwrapped = _resample(phase_unwrapped, sample_rate, frame_rate)
+        data["phase"] = _resample(phase, sample_rate, frame_rate)
+        data["phase_unwrapped"] = _resample(phase_unwrapped, sample_rate, frame_rate)
     if return_osc_sub:
-        osc_sub = _resample(osc_sub, sample_rate, frame_rate)
+        data["osc_sub"] = _resample(osc_sub, sample_rate, frame_rate)
+        data["phase_sub"] = _resample(phase_sub, sample_rate, frame_rate)
+        data["phase_unwrapped_sub"] = _resample(phase_unwrapped_sub, sample_rate, frame_rate)
+        data["osc_sub_sync"] = _resample(osc_sub_sync, sample_rate, frame_rate)
+        data["phase_unwrapped_sub_sync"] = _resample(phase_unwrapped_sub_sync, sample_rate, frame_rate)
+        data["phase_sub_sync"] = _resample(phase_sub_sync, sample_rate, frame_rate)
 
     # Return
-    if return_phase and not return_osc_sub:
-        return osc, phase, phase_unwrapped
-    if not return_phase and return_osc_sub:
-        return osc, osc_sub
-    if return_phase and return_osc_sub:
-        return osc, phase, phase_unwrapped, osc_sub
-    return osc
+    return data
+
+def _wrap(phases):
+    return (phases + np.pi) % (2 * np.pi) - np.pi
 
 def _get_transient_times(phase, n_transients=500, n_transients_per_period=1, sample_rate=1):
     '''Get onset times of transients given phase.'''
@@ -254,14 +286,12 @@ def generate_windows(data, window_secs, hop_secs, shuffle=False,
                          get_windows(data["inputs"]["f0"], data["frame_rate"])):
         ex_dict = {"audio": audio, "f0": f0}
         if generate_osc:
-            osc, p, p_uw, osc_sub = get_synchronized_osc(audio,
-                                                         f0,
-                                                         data["sample_rate"],
-                                                         data["frame_rate"],
-                                                         return_phase=True,
-                                                         return_osc_sub=True,
-                                                         osc_sub_denom=FLAGS.osc_sub_denom)
-            ex_dict.update({"osc": osc, "phase": p, "phase_unwrapped": p_uw, "osc_sub": osc_sub})
+            osc_data = get_synchronized_osc(audio, f0, data["sample_rate"],
+                                                       data["frame_rate"],
+                                                       return_phase=True,
+                                                       return_osc_sub=True,
+                                                       osc_sub_denom=FLAGS.osc_sub_denom)
+            ex_dict.update(osc_data)
         yield ex_dict
 
 def split_ids(n_windows_total, splits):
@@ -291,17 +321,6 @@ def get_split_from_id(i, ids):
         if i in ids[split]:
             return split
     raise ValueError("%d is in none of the splits!" % i)
-
-def get_serialized_example(data):
-    '''Get serialized tf.train.Example from dictionary of floats.'''
-    example = tf.train.Example(
-        features=tf.train.Features(
-            feature={
-                k: tf.train.Feature(float_list=tf.train.FloatList(value=v))
-                for k, v in data.items()
-            }
-    ))
-    return example.SerializeToString()
 
 def main(argv):
     # Check preconditions
@@ -340,6 +359,11 @@ def main(argv):
         input_keys.append("phase_unwrapped")
     if FLAGS.osc_sub:
         input_keys.append("osc_sub")
+        input_keys.append("phase_unwrapped_sub")
+        input_keys.append("phase_sub")
+        input_keys.append("osc_sub_sync")
+        input_keys.append("phase_unwrapped_sub_sync")
+        input_keys.append("phase_sub_sync")
     audio_rate = -1
     input_rate = -1
     n_samples = {split: 0 for split in ["total", "train", "valid", "test"]}

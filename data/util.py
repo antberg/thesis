@@ -5,10 +5,22 @@ import time
 from absl import logging
 import matplotlib.pyplot as plt
 import numpy as np
+import tensorflow as tf
 import librosa
 from librosa.display import specshow
 from ddsp import spectral_ops
 from scipy import signal
+
+def get_serialized_example(data):
+    '''Get serialized tf.train.Example from dictionary of floats.'''
+    example = tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                k: tf.train.Feature(float_list=tf.train.FloatList(value=v))
+                for k, v in data.items()
+            }
+    ))
+    return example.SerializeToString()
 
 def pass_filter(audio, audio_rate, cutoff, btype="high", order=5):
     '''
