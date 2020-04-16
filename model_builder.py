@@ -423,5 +423,32 @@ def get_model_builder_from_id(model_id):
             f0_denom=4.0,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
         )
+    if model_id == "200415_1_hpt_osc_ford_mini":
+        '''
+        Test the HT signal model with low transient resolution.
+        '''
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_osc_stitch_mini",
+            checkpoint_dir="./data/weights/"+model_id,
+            model_type="osc_f0_rnn_fc_hpt_decoder",
+            n_transient_distribution=100,
+            input_keys=["f0_sub_scaled", "osc_scaled"],
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
+        )
+    if model_id == "200416_1_hpn_ford_large_2s_osc_sub_sync":
+        '''
+        Test the HT signal model with low transient resolution.
+        '''
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_large_2s_osc_sub_sync",
+            checkpoint_dir="./data/weights/"+model_id,
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
+        )
     else:
         raise ValueError("%s is not a valid model id." % model_id)
