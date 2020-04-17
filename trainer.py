@@ -6,7 +6,7 @@ import tensorflow as tf
 from absl import app, logging, flags
 from ddsp.training.train_util import Trainer, write_gin_config, get_strategy
 
-from data_provider import TFRecordProvider
+from data.data_provider import TFRecordProvider
 from model_builder import ModelBuilder, get_model_builder_from_id
 from models.losses import MelSpectralLoss, AdaptiveMelSpectralLoss, TimeFreqResMelSpectralLoss
 

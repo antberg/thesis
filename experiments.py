@@ -14,10 +14,10 @@ import matplotlib.pyplot as plt
 import soundfile as sf
 from ddsp import spectral_ops
 
-from model_builder import ModelBuilder, get_model_builder_from_id
-from data_provider import TFRecordProvider
-from models.util import compute_mel
+from data.data_provider import TFRecordProvider
 from data.util import plot_audio_f0
+from models.util import compute_mel
+from model_builder import ModelBuilder, get_model_builder_from_id
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("model_id", None, "ID of a model.")
@@ -428,6 +428,8 @@ def experiment_ford_helper(ckpt_dir, data_dir, plot_type="spectrogram",
     #y = 100 + 50*np.sin(x)
     #input_tensor["f0"] = tf.convert_to_tensor(y, dtype=tf.float32)[tf.newaxis,:,tf.newaxis]
     #input_tensor["f0"] += 20.
+    
+    #input_tensor.pop("osc", None)
 
     logging.info("Building model...")
     if model is None:
