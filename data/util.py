@@ -22,6 +22,17 @@ def get_serialized_example(data):
     ))
     return example.SerializeToString()
 
+def get_serialized_example_tf(data):
+    '''Get serialized tf.train.Example from TF dictionary.'''
+    example = tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                k: tf.train.Feature(float_list=tf.train.FloatList(value=v.numpy()[0,:]))
+                for k, v in data.items()
+            }
+    ))
+    return example.SerializeToString()
+
 def pass_filter(audio, audio_rate, cutoff, btype="high", order=5):
     '''
     High/low pass filter.
