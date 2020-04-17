@@ -1,7 +1,11 @@
 '''
 Prepare TFRecords from preprocessed data files.
 
-This script produces a TFRecord dataset containg audio and f0 features.
+This script produces a TFRecord dataset containg audio and specified input features.
+
+This is a script inside a module and must therefore be run from the parent directory
+(..) as follows:
+    python -m data.prepare_tfrecord [--args values]
 '''
 import os
 import sys
@@ -17,8 +21,8 @@ from ddsp.core import oscillator_bank
 from scipy.interpolate import interp1d
 from scipy.signal import correlate, hilbert
 
-from util import plot_audio_f0, get_timestamp, pass_filter, get_serialized_example
-from constants import DEFAULT_WINDOW_SECS, DEFAULT_HOP_SECS
+from .util import plot_audio_f0, get_timestamp, pass_filter, get_serialized_example
+from .constants import DEFAULT_WINDOW_SECS, DEFAULT_HOP_SECS
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("data_dir", None, "Directory of training data.")
@@ -121,7 +125,6 @@ def get_synchronized_osc(audio, f0, sample_rate, frame_rate,
     
     # Upsample f0 to audio sample rate to get maximum-precision lag
     n_samples = np.size(audio)
-    audio_secs = n_samples/sample_rate
     f0_upsample = _resample(f0, frame_rate, sample_rate)
 
     # For each window, generate oscillating signal, synchronize and crop
@@ -452,10 +455,10 @@ def main(argv):
         "hop_secs": hop_secs
     }
     metadata_path = os.path.join(tfrecord_dir, "metadata.pickle")
-    print("Saving metadata to '%s'..." % metadata_path)
+    logging.info("Saving metadata to '%s'..." % metadata_path)
     with open(metadata_path, "wb") as f:
         pickle.dump(metadata, f)
-    print("Done.")
+    logging.info("Done.")
 
 if __name__ == "__main__":
     app.run(main)
