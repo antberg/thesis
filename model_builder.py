@@ -451,5 +451,22 @@ def get_model_builder_from_id(model_id):
             f0_denom=4.0,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
         )
+    if model_id == "200417_1_f0_phase_hpt_ford_large_2s_osc_sub_sync":
+        '''
+        Train the harmonic-plus-transient model with transients at constant phases
+        on the dataset with synchronized phase_sub.
+        '''
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_large_2s_osc_sub_sync",
+            checkpoint_dir="./data/weights/%s" % model_id,
+            model_type="phase_f0_rnn_fc_hpt_decoder",
+            window_secs=2,
+            n_transient_distribution=500,
+            n_transients_per_period=2,
+            input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
+        )
     else:
         raise ValueError("%s is not a valid model id." % model_id)
