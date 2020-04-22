@@ -534,7 +534,7 @@ def get_model_builder_from_id(model_id):
     if model_id == "final_large_gru":
         '''
         Same as final_phase, except:
-          - Twice as many (1024) units in the GRU
+          - 4 times as many (2048) units in the GRU
         '''
         return ModelBuilder(
             model_id=model_id,
@@ -544,7 +544,7 @@ def get_model_builder_from_id(model_id):
             window_secs=2,
             input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
             f0_denom=4.0,
-            rnn_channels=[1024],
+            rnn_channels=[2048],
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
                                                loss_type="L1",
