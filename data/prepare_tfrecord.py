@@ -36,7 +36,7 @@ flags.DEFINE_bool("osc_sub", False, "Whether to generate a synchronized oscillat
 flags.DEFINE_float("osc_sub_denom", 4.0, "The denominator to divide f0 with for the oscillating subharmonic.")
 flags.DEFINE_bool("phase", False, "Whether to generate a synchronized phase signal.")
 flags.DEFINE_bool("pad", False, "Whether to pad the end of the recording with zeros.")
-flags.DEFINE_list("split", [80, 10, 10], "Train-validation-test split of data.")
+flags.DEFINE_list("split", [70, 15, 15], "Train-validation-test split of data.")
 
 def get_float_feature(value):
     '''Returns a float_list from a float / double.'''
@@ -251,9 +251,10 @@ def _unwrap(p):
 
 def get_n_windows(sequence, rate, window_secs, hop_secs, pad=False):
     '''Get number of windows for a given sequence.'''
+    eps = 1e-8
     window_size = int(window_secs * rate)
     hop_size = int(hop_secs * rate)
-    n_windows = int(np.ceil((len(sequence) - window_size) / hop_size))
+    n_windows = int(np.ceil((len(sequence) - window_size) / hop_size + eps))
     if pad:
         n_windows += 1
     return n_windows
@@ -342,7 +343,7 @@ def main(argv):
 
     # Set paths to .tfrecord files
     tfrecord_name = get_timestamp() if FLAGS.tfrecord_name is None else FLAGS.tfrecord_name
-    tfrecord_dir = os.path.join("./tfrecord", tfrecord_name)
+    tfrecord_dir = os.path.join(".", "data", "tfrecord", tfrecord_name)
     if not os.path.exists(tfrecord_dir):
         os.makedirs(tfrecord_dir)
     tfrecord_paths = {split: os.path.join(tfrecord_dir, "%s.tfrecord" % split)
