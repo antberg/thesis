@@ -501,7 +501,7 @@ def get_model_builder_from_id(model_id):
         return ModelBuilder(
             model_id=model_id,
             data_dir="./data/tfrecord/ford_final",
-            checkpoint_dir="./data/weights/"+model_id,
+            checkpoint_dir="./data/weights/final/"+model_id,
             model_type="osc_f0_rnn_fc_hpn_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel"],
@@ -520,7 +520,7 @@ def get_model_builder_from_id(model_id):
         return ModelBuilder(
             model_id=model_id,
             data_dir="./data/tfrecord/ford_final",
-            checkpoint_dir="./data/weights/"+model_id,
+            checkpoint_dir="./data/weights/final/"+model_id,
             model_type="osc_f0_rnn_fc_hpn_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
@@ -539,7 +539,7 @@ def get_model_builder_from_id(model_id):
         return ModelBuilder(
             model_id=model_id,
             data_dir="./data/tfrecord/ford_final",
-            checkpoint_dir="./data/weights/"+model_id,
+            checkpoint_dir="./data/weights/final/"+model_id,
             model_type="osc_f0_rnn_fc_hpn_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
@@ -559,7 +559,7 @@ def get_model_builder_from_id(model_id):
         return ModelBuilder(
             model_id=model_id,
             data_dir="./data/tfrecord/ford_final",
-            checkpoint_dir="./data/weights/"+model_id,
+            checkpoint_dir="./data/weights/final/"+model_id,
             model_type="osc_f0_rnn_fc_hpnt_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
@@ -579,7 +579,7 @@ def get_model_builder_from_id(model_id):
         return ModelBuilder(
             model_id=model_id,
             data_dir="./data/tfrecord/ford_final",
-            checkpoint_dir="./data/weights/"+model_id,
+            checkpoint_dir="./data/weights/final/"+model_id,
             model_type="osc_f0_rnn_fc_hpt_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
@@ -599,7 +599,7 @@ def get_model_builder_from_id(model_id):
         return ModelBuilder(
             model_id=model_id,
             data_dir="./data/tfrecord/ford_final",
-            checkpoint_dir="./data/weights/"+model_id,
+            checkpoint_dir="./data/weights/final/"+model_id,
             model_type="phase_f0_rnn_fc_hpt_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
@@ -631,7 +631,7 @@ def get_model_builder_from_id(model_id):
         return ModelBuilder(
             model_id=model_id,
             data_dir="./data/tfrecord/ford_final_mini",
-            checkpoint_dir="./data/weights/"+model_id,
+            checkpoint_dir="./data/weights/final/"+model_id,
             model_type="osc_f0_rnn_fc_hpn_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel"],
@@ -646,7 +646,7 @@ def get_model_builder_from_id(model_id):
         return ModelBuilder(
             model_id=model_id,
             data_dir="./data/tfrecord/ford_final_mini",
-            checkpoint_dir="./data/weights/"+model_id,
+            checkpoint_dir="./data/weights/final/"+model_id,
             model_type="osc_f0_rnn_fc_hpn_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
@@ -661,7 +661,7 @@ def get_model_builder_from_id(model_id):
         return ModelBuilder(
             model_id=model_id,
             data_dir="./data/tfrecord/ford_final_mini",
-            checkpoint_dir="./data/weights/"+model_id,
+            checkpoint_dir="./data/weights/final/"+model_id,
             model_type="osc_f0_rnn_fc_hpnt_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
@@ -677,7 +677,7 @@ def get_model_builder_from_id(model_id):
         return ModelBuilder(
             model_id=model_id,
             data_dir="./data/tfrecord/ford_final_mini",
-            checkpoint_dir="./data/weights/"+model_id,
+            checkpoint_dir="./data/weights/final/"+model_id,
             model_type="osc_f0_rnn_fc_hpt_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
@@ -693,7 +693,7 @@ def get_model_builder_from_id(model_id):
         return ModelBuilder(
             model_id=model_id,
             data_dir="./data/tfrecord/ford_final_mini",
-            checkpoint_dir="./data/weights/"+model_id,
+            checkpoint_dir="./data/weights/final/"+model_id,
             model_type="phase_f0_rnn_fc_hpt_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
