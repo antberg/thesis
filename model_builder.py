@@ -1,3 +1,5 @@
+from ddsp.losses import SpectralLoss
+
 from data.constants import DEFAULT_WINDOW_SECS, DEFAULT_SAMPLE_RATE, DEFAULT_FRAME_RATE
 from models.models import F0RnnFcHPNDecoder, OscF0RnnFcHPNDecoder, OscF0RnnFcHPNTDecoder, OscF0RnnFcHPTDecoder, PhaseF0RnnFcHPTDecoder
 from models.losses import TimeFreqResMelSpectralLoss
@@ -451,7 +453,7 @@ def get_model_builder_from_id(model_id):
             f0_denom=4.0,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
         )
-    if model_id == "200417_1_f0_phase_hpt_ford_large_2s_osc_sub_sync":
+    if model_id == "200417_1_f0_phase_hpt_ford_large_2s_osc_sub_sync": # NOTE: Needs batch size <= 12
         '''
         Train the harmonic-plus-transient model with transients at constant phases
         on the dataset with synchronized phase_sub.
@@ -468,5 +470,242 @@ def get_model_builder_from_id(model_id):
             f0_denom=4.0,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000, time_res=1/250)]
         )
-    else:
-        raise ValueError("%s is not a valid model id." % model_id)
+    # =====================================================================
+    # FINAL MODELS USED IN THE REPORT UNDER THE "RECONSTRUCTION" EXPERIMENT
+    # =====================================================================
+    if model_id == "final_vanilla_ddsp":
+        '''
+        Same as DDSP autoencoder, except:
+          - No loudness features
+          - 48 kHz audio sample rate (instead of 16 kHz)
+          - Different FFT sizes (adapted to new sample rate)
+        '''
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_final",
+            checkpoint_dir="./data/weights/final/"+model_id,
+            model_type="f0_rnn_fc_hpn_decoder",
+            window_secs=2,
+            losses=[SpectralLoss(fft_sizes=(8192, 4096, 2048, 1024, 512, 256, 128),
+                                 loss_type="L1",
+                                 mag_weight=1.0,
+                                 logmag_weight=1.0)]
+        )
+    if model_id == "final_cyl":
+        '''
+        Same as final_vanilla_ddsp, except:
+          - Use f0/n_cyl (n_cyl = 4) as fundamental frequency in harmonic synthesizer
+          - Use a Mel-scaled f0 feature as input to decoder network
+          - Use a Mel spectral loss instead of STFT
+        '''
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_final",
+            checkpoint_dir="./data/weights/"+model_id,
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            window_secs=2,
+            input_keys=["f0_scaled_mel"],
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
+                                               time_res=1/250,
+                                               loss_type="L1",
+                                               mag_weight=1.0,
+                                               logmag_weight=1.0)]
+        )
+    if model_id == "final_phase":
+        '''
+        Same as final_cyl, except:
+          - Add camshaft phase as decoder network input
+        '''
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_final",
+            checkpoint_dir="./data/weights/"+model_id,
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            window_secs=2,
+            input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
+                                               time_res=1/250,
+                                               loss_type="L1",
+                                               mag_weight=1.0,
+                                               logmag_weight=1.0)]
+        )
+    if model_id == "final_large_gru":
+        '''
+        Same as final_phase, except:
+          - Twice as many (1024) units in the GRU
+        '''
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_final",
+            checkpoint_dir="./data/weights/"+model_id,
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            window_secs=2,
+            input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_denom=4.0,
+            rnn_channels=[1024],
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
+                                               time_res=1/250,
+                                               loss_type="L1",
+                                               mag_weight=1.0,
+                                               logmag_weight=1.0)]
+        )
+    if model_id == "final_hnt":
+        '''
+        Same as final_phase, except:
+          - Add transient component to signal model
+        '''
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_final",
+            checkpoint_dir="./data/weights/"+model_id,
+            model_type="osc_f0_rnn_fc_hpnt_decoder",
+            window_secs=2,
+            input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_denom=4.0,
+            n_transient_distribution=200,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
+                                               time_res=1/250,
+                                               loss_type="L1",
+                                               mag_weight=1.0,
+                                               logmag_weight=1.0)]
+        )
+    if model_id == "final_ht":
+        '''
+        Same as final_hnt, except:
+          - Remove noise component from signal model
+        '''
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_final",
+            checkpoint_dir="./data/weights/"+model_id,
+            model_type="osc_f0_rnn_fc_hpt_decoder",
+            window_secs=2,
+            input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_denom=4.0,
+            n_transient_distribution=200,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
+                                               time_res=1/250,
+                                               loss_type="L1",
+                                               mag_weight=1.0,
+                                               logmag_weight=1.0)]
+        )
+    if model_id == "final_ht_equiphase":
+        '''
+        Same as final_ht, except:
+          - Transients are equidistant in phase (instead of time)
+        '''
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_final",
+            checkpoint_dir="./data/weights/"+model_id,
+            model_type="phase_f0_rnn_fc_hpt_decoder",
+            window_secs=2,
+            input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_denom=4.0,
+            n_transient_distribution=500,
+            n_transients_per_period=2,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
+                                               time_res=1/250,
+                                               loss_type="L1",
+                                               mag_weight=1.0,
+                                               logmag_weight=1.0)]
+        )
+    # ==================================================================
+    # FINAL MODELS USED IN THE REPORT UNDER THE "OVERFITTING" EXPERIMENT
+    # ==================================================================
+    if model_id == "final_mini_vanilla_ddsp":
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_final_mini",
+            checkpoint_dir="./data/weights/final/"+model_id,
+            model_type="f0_rnn_fc_hpn_decoder",
+            window_secs=2,
+            losses=[SpectralLoss(fft_sizes=(8192, 4096, 2048, 1024, 512, 256, 128),
+                                 loss_type="L1",
+                                 mag_weight=1.0,
+                                 logmag_weight=1.0)]
+        )
+    if model_id == "final_mini_cyl":
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_final_mini",
+            checkpoint_dir="./data/weights/"+model_id,
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            window_secs=2,
+            input_keys=["f0_scaled_mel"],
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
+                                               time_res=1/250,
+                                               loss_type="L1",
+                                               mag_weight=1.0,
+                                               logmag_weight=1.0)]
+        )
+    if model_id == "final_mini_phase":
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_final_mini",
+            checkpoint_dir="./data/weights/"+model_id,
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            window_secs=2,
+            input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
+                                               time_res=1/250,
+                                               loss_type="L1",
+                                               mag_weight=1.0,
+                                               logmag_weight=1.0)]
+        )
+    if model_id == "final_mini_hnt":
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_final_mini",
+            checkpoint_dir="./data/weights/"+model_id,
+            model_type="osc_f0_rnn_fc_hpnt_decoder",
+            window_secs=2,
+            input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_denom=4.0,
+            n_transient_distribution=200,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
+                                               time_res=1/250,
+                                               loss_type="L1",
+                                               mag_weight=1.0,
+                                               logmag_weight=1.0)]
+        )
+    if model_id == "final_mini_ht":
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_final_mini",
+            checkpoint_dir="./data/weights/"+model_id,
+            model_type="osc_f0_rnn_fc_hpt_decoder",
+            window_secs=2,
+            input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_denom=4.0,
+            n_transient_distribution=200,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
+                                               time_res=1/250,
+                                               loss_type="L1",
+                                               mag_weight=1.0,
+                                               logmag_weight=1.0)]
+        )
+    if model_id == "final_mini_ht_equiphase":
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_final_mini",
+            checkpoint_dir="./data/weights/"+model_id,
+            model_type="phase_f0_rnn_fc_hpt_decoder",
+            window_secs=2,
+            input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_denom=4.0,
+            n_transient_distribution=500,
+            n_transients_per_period=2,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
+                                               time_res=1/250,
+                                               loss_type="L1",
+                                               mag_weight=1.0,
+                                               logmag_weight=1.0)]
+        )
+    
+    # If we end up here, the model id is invalid
+    raise ValueError("%s is not a valid model id." % model_id)
