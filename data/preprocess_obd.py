@@ -11,7 +11,6 @@ from scipy.signal import correlate
 import librosa
 from librosa.display import specshow
 from ddsp.spectral_ops import compute_f0, compute_loudness, _CREPE_FRAME_SIZE, _CREPE_SAMPLE_RATE
-import pdb
 
 from constants import DEFAULT_SAMPLE_RATE, DEFAULT_FRAME_RATE
 from util import plot_data_dict, get_timestamp
@@ -20,7 +19,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string("data_dir", "./raw/obd/ford/1min", "Directory where OBD data and audio is located.")
 flags.DEFINE_string("audio_filename", "1.wav", "File name of recorded audio.")
 flags.DEFINE_string("save_dir", "./processed/obd/", "Directory where processed data will be stored.")
-flags.DEFINE_string("data_name", get_timestamp(), "Name of data (will be used as filename when saving).")
+flags.DEFINE_string("data_name", None, "Name of data (will be used as filename when saving).")
 flags.DEFINE_integer("sample_rate", DEFAULT_SAMPLE_RATE, "Sample rate of audio.")
 flags.DEFINE_integer("frame_rate", DEFAULT_FRAME_RATE, "Sample rate of inputs.")
 flags.DEFINE_list("commands", ["RPM", "SPEED", "THROTTLE_POS"], "Command corresponding to quantities to preprocess.")
@@ -30,6 +29,7 @@ flags.DEFINE_string("f0_path", None, "Path to f0 array, if it has been estimated
 flags.DEFINE_list("plots", ["obd", "f0-rpm", "f0-audio", "data"], "Which plots to show.")
 flags.DEFINE_string("plot_mode", "save", "Whether to save or show plots.")
 flags.DEFINE_bool("skip_f0_sync", False, "Whether to skip synchronization of f0 with the audio using CREPE.")
+flags.DEFINE_float("max_mins", 0.0, "Max minutes before recording is cropped.")
 
 def preprocess_obd_data(c_list, t0=None):
     '''Preprocess OBD data.'''
@@ -60,6 +60,8 @@ def main(argv):
         i_RPM = FLAGS.commands.index("RPM")
         FLAGS.commands[i_RPM] = FLAGS.commands[0]
         FLAGS.commands[0] = "RPM"
+    if FLAGS.data_name is None:
+        FLAGS.data_name = get_timestamp()
     
     # Create save folder
     save_dir = os.path.join(FLAGS.save_dir, FLAGS.data_name)
@@ -75,10 +77,12 @@ def main(argv):
     c_dict = dict()
     if "obd" in FLAGS.plots:
         _, axes = plt.subplots(n_commands, 1, figsize=(15, 3*n_commands))
+        axes = list(iter(axes)) if n_commands > 1 else [axes]
     for i, c in enumerate(FLAGS.commands):
         c_pickle_path = os.path.join(FLAGS.data_dir, c + ".pickle")
         logging.info("Unpickling %s data..." % c)
-        c_list = pickle.load(open(c_pickle_path, "rb"))
+        with open(c_pickle_path, "rb") as f:
+            c_list = pickle.load(f)
         if c == "RPM":
             t0 = c_list.times[0] # Let times be relative to RPM's initial time
 
@@ -108,9 +112,16 @@ def main(argv):
     f0_path = os.path.join(FLAGS.data_dir, "f0.npy")
     audio_path = os.path.join(FLAGS.data_dir, FLAGS.audio_filename)
     audio, _ = librosa.load(audio_path, FLAGS.sample_rate)
+    if FLAGS.max_mins > 0.0:
+        logging.info("Cropping out first %.1f minutes of audio..." % FLAGS.max_mins)
+        n_samples = int(FLAGS.max_mins*60*FLAGS.sample_rate)
+        audio = audio[:n_samples]
     if os.path.exists(f0_path):
         logging.info("Using precomputed f0.")
         f0 = np.load(f0_path)
+    elif FLAGS.skip_f0_sync:
+        logging.info("Skipping f0 estimation since skipping sync.")
+        f0 = np.zeros((f0_frame_size,))
     else:
         logging.info("Estimating f0 using CREPE...")
         audio_lores = librosa.core.resample(audio, FLAGS.sample_rate, _CREPE_SAMPLE_RATE)
@@ -125,7 +136,7 @@ def main(argv):
 
     # Scale interpolated RPM signal to become f0 and sample on CREPE f0 times
     logging.info("Upsampling RPM signal...")
-    f0_times = np.arange(0., len(f0)/f0_frame_rate, 1/f0_frame_rate)
+    f0_times = np.arange(0., len(f0))/f0_frame_rate
     f0_rpm_times = f0_times[f0_times < np.max(c_dict["RPM"]["times"])]
     rpm_scale = 1./60
     if FLAGS.engine_type == "four-stroke":
