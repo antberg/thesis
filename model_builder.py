@@ -509,7 +509,7 @@ def get_model_builder_from_id(model_id):
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
                                                loss_type="L1",
-                                               mag_weight=1.0,
+                                               mag_weight=0.0,
                                                logmag_weight=1.0)]
         )
     if model_id == "final_phase":
@@ -528,7 +528,7 @@ def get_model_builder_from_id(model_id):
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
                                                loss_type="L1",
-                                               mag_weight=1.0,
+                                               mag_weight=0.0,
                                                logmag_weight=1.0)]
         )
     if model_id == "final_large_gru":
@@ -548,7 +548,7 @@ def get_model_builder_from_id(model_id):
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
                                                loss_type="L1",
-                                               mag_weight=1.0,
+                                               mag_weight=0.0,
                                                logmag_weight=1.0)]
         )
     if model_id == "final_hnt":
@@ -568,7 +568,7 @@ def get_model_builder_from_id(model_id):
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
                                                loss_type="L1",
-                                               mag_weight=1.0,
+                                               mag_weight=0.0,
                                                logmag_weight=1.0)]
         )
     if model_id == "final_ht":
@@ -588,7 +588,7 @@ def get_model_builder_from_id(model_id):
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
                                                loss_type="L1",
-                                               mag_weight=1.0,
+                                               mag_weight=0.0,
                                                logmag_weight=1.0)]
         )
     if model_id == "final_ht_equiphase":
@@ -609,7 +609,7 @@ def get_model_builder_from_id(model_id):
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
                                                loss_type="L1",
-                                               mag_weight=1.0,
+                                               mag_weight=0.0,
                                                logmag_weight=1.0)]
         )
     # ==================================================================
@@ -639,7 +639,7 @@ def get_model_builder_from_id(model_id):
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
                                                loss_type="L1",
-                                               mag_weight=1.0,
+                                               mag_weight=0.0,
                                                logmag_weight=1.0)]
         )
     if model_id == "final_mini_phase":
@@ -654,7 +654,7 @@ def get_model_builder_from_id(model_id):
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
                                                loss_type="L1",
-                                               mag_weight=1.0,
+                                               mag_weight=0.0,
                                                logmag_weight=1.0)]
         )
     if model_id == "final_mini_hnt":
@@ -670,7 +670,7 @@ def get_model_builder_from_id(model_id):
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
                                                loss_type="L1",
-                                               mag_weight=1.0,
+                                               mag_weight=0.0,
                                                logmag_weight=1.0)]
         )
     if model_id == "final_mini_ht":
@@ -686,7 +686,7 @@ def get_model_builder_from_id(model_id):
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
                                                loss_type="L1",
-                                               mag_weight=1.0,
+                                               mag_weight=0.0,
                                                logmag_weight=1.0)]
         )
     if model_id == "final_mini_ht_equiphase":
@@ -703,7 +703,7 @@ def get_model_builder_from_id(model_id):
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
                                                loss_type="L1",
-                                               mag_weight=1.0,
+                                               mag_weight=0.0,
                                                logmag_weight=1.0)]
         )
     
