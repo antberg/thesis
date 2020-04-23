@@ -141,7 +141,10 @@ def main(argv):
         summary_dir_valid = os.path.join(checkpoint_dir, "summaries", "valid")
         if not os.path.exists(summary_dir_valid):
             os.makedirs(summary_dir_valid)
-        strategy = tf.distribute.MirroredStrategy(devices=FLAGS.devices)
+        if FLAGS.devices is not None and len(FLAGS.devices) == 1:
+            strategy = tf.distribute.OneDeviceStrategy(FLAGS.devices[0])
+        else:
+            strategy = tf.distribute.MirroredStrategy(devices=FLAGS.devices)
         trainer = Trainer(model, strategy)
 
         # Train
