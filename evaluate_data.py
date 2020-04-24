@@ -6,6 +6,7 @@ from absl import app, flags, logging
 
 from data.data_provider import TFRecordProvider
 from evaluation.data import DataEvaluator
+from evaluation.util import Util
 
 # Define flags
 FLAGS = flags.FLAGS
@@ -64,14 +65,14 @@ def main(argv):
                     bins_f0=constants["f0_hist_bins"],
                     bins_f0_diff=constants["f0_diff_hist_bins"])
                 logging.info("Saving to '%s'..." % f0_hist_data_path)
-                data_evaluator.save_data_to_file(f0_hist_data, f0_hist_data_path)
+                Util.save_data_to_file(f0_hist_data, f0_hist_data_path)
                 if constants["f0_hist_bins"] is None:
                     constants["f0_hist_bins"] = f0_hist_data["f0_hist_bins"]
                     constants["f0_diff_hist_bins"] = f0_hist_data["f0_diff_hist_bins"]
             else:
                 # Get pre-calculated data from file
                 logging.info("Loading pre-calculated data from '%s'..." % f0_hist_data_path)
-                f0_hist_data = data_evaluator.load_data_from_file(f0_hist_data_path)
+                f0_hist_data = Util.load_data_from_file(f0_hist_data_path)
             
             # Plot f0 histograms
             input_keys = ["f0", "f0_diff"]
@@ -115,11 +116,11 @@ def main(argv):
                 for spec_type in ["mel", "cqt"]:
                     fig_path = os.path.join(fig_dir, "ex_%s_%d_%s.%s" % \
                                             (split, ex_id, spec_type, FIG_EXTENSION))
-                    data_evaluator.plot_spectrogram_from_dict(ex_dict, spec_type=spec_type,
-                                                                       plot_f0=True,
-                                                                       split=split,
-                                                                       save_path=fig_path,
-                                                                       show=FLAGS.show)
+                    Util.plot_spectrogram_from_dict(ex_dict, spec_type=spec_type,
+                                                             plot_f0=True,
+                                                             split=split,
+                                                             save_path=fig_path,
+                                                             show=FLAGS.show)
 
     logging.info("Done!")
 
