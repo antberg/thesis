@@ -14,14 +14,6 @@ class DataEvaluator:
     Class for evaluating a dataset.
     '''
     SPLITS = ["all", "train", "test", "valid"]
-    INPUT_UNITS = {"f0": "Hz",
-                   "phase": "rad/s",
-                   "phase_sub": "rad/s",
-                   "phase_sub_sync": "rad/s"}
-    LATEX_FROM_KEY = {"f0": "$f_0$",
-                      "phase": "$\phi$",
-                      "phase_sub": "$\phi$",
-                      "phase_sub_sync": "$\phi$"}
 
     def __init__(self, data_provider):
         '''Construct the DataEvaluator.'''
@@ -163,39 +155,3 @@ class DataEvaluator:
                 data["inputs"][input_key] = batch[input_key].numpy().flatten()
                 data["input_stats"][input_key] = self.get_input_stats(input_key)
         return data
-    
-    @staticmethod
-    def plot_inputs_from_dict(data, split="all", save_path=None, show=True, **fig_kwargs):
-        '''Plot inputs for a given example.'''
-        if fig_kwargs.get("figsize", None) is None:
-            fig_kwargs["figsize"] = (4, 4)
-        sns.set(palette="colorblind")
-        color = list(sns.color_palette())[DataEvaluator.SPLITS.index(split)]
-        n_inputs = len(data["inputs"])
-        n_subplots = 1 + n_inputs
-        _, axes = plt.subplots(n_subplots, 1, **fig_kwargs)
-        axes_iter = iter(axes)
-        ax = next(axes_iter)
-        t = np.arange(0.0, len(data["audio"]))/data["audio_rate"]
-        ax.plot(t, data["audio"], color=color)
-        ax.set_ylim((-1, 1))
-        ax.set_ylabel("audio")
-        Util.remove_xticks(ax)
-        for i, keyval in enumerate(data["inputs"].items()):
-            key, values = keyval
-            ax = next(axes_iter)
-            t = np.arange(0.0, len(values))/data["input_rate"]
-            ax.plot(t, values, color=color)
-            ylim_min = np.floor(data["input_stats"][key]["min"])
-            ylim_max = np.ceil(data["input_stats"][key]["max"])
-            ax.set_ylim((ylim_min, ylim_max))
-            unit = DataEvaluator.INPUT_UNITS.get(key)
-            unit = " [%s]" % unit if unit else ""
-            tex_label = DataEvaluator.LATEX_FROM_KEY.get(key)
-            tex_label = tex_label if tex_label else key
-            ylabel = tex_label + unit
-            ax.set_ylabel(ylabel)
-            if i + 1 < n_inputs:
-                Util.remove_xticks(ax)
-        ax.set_xlabel("time [s]")
-        return Util.plot_postprocess(save_path, show)

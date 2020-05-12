@@ -108,7 +108,7 @@ def main(argv):
                 fig_path = os.path.join(fig_dir, "ex_inputs_%s_%d.%s" % (split, ex_id, FIG_EXTENSION))
                 logging.info("Plotting inputs for %s example %d of '%s'..." % \
                              (split, ex_id, data_evaluator.dataset_name))
-                data_evaluator.plot_inputs_from_dict(ex_dict, split, save_path=fig_path, show=FLAGS.show)
+                Util.plot_inputs_from_dict(ex_dict, split, save_path=fig_path, show=FLAGS.show)
 
                 # Spectrograms
                 logging.info("Plotting spectrograms for %s example %d of '%s'..." % \

@@ -15,10 +15,19 @@ class Util:
     '''
     PLOT_PALETTE = "colorblind"
     SPLITS = ["all", "train", "test", "valid"]
+    INPUT_UNITS = {"f0": "Hz",
+                   "phase": "rad/s",
+                   "phase_sub": "rad/s",
+                   "phase_sub_sync": "rad/s"}
+    LATEX_FROM_KEY = {"f0": "$f_0$",
+                      "phase": "$\phi$",
+                      "phase_sub": "$\phi$",
+                      "phase_sub_sync": "$\phi$"}
 
     # =====================
     # FILE STREAM UTILITIES
     # =====================
+
     @staticmethod
     def save_data_to_file(data, file_path):
         '''Pickle data.'''
@@ -40,6 +49,7 @@ class Util:
     # ==============
     # PLOT UTILITIES
     # ==============
+
     @staticmethod
     def plot_postprocess(save_path=None, show=True):
         '''Postprocess current plot.'''
@@ -69,7 +79,7 @@ class Util:
                                          show=True, **fig_kwargs):
         '''Plot spectrogram for a given example.'''
         if fig_kwargs.get("figsize", None) is None:
-            fig_kwargs["figsize"] = (4, 6)
+            fig_kwargs["figsize"] = (4, 8)
         if spec_type == "mel":
             S_dB = Util.get_mel_spectrogram(data[audio_key], data["audio_rate"])
             specshow_kw = dict(y_axis="mel")
@@ -95,6 +105,50 @@ class Util:
             ax.plot(t, f0, "--", color=color, label="$f_0$")
             plt.legend(bbox_to_anchor=(0, 1, 1, 0), loc="lower right")
         ax.set_ylabel("frequency [Hz]")
+        ax.set_xlabel("time [s]")
+        return Util.plot_postprocess(save_path, show)
+    
+    @staticmethod
+    def plot_inputs_from_dict(data, plot_audio=True, split="all", input_keys=None, save_path=None, show=True, **fig_kwargs):
+        '''Plot inputs for a given example.'''
+        if fig_kwargs.get("figsize", None) is None:
+            fig_kwargs["figsize"] = (4, 4)
+        if input_keys is None:
+            input_keys = data["inputs"].keys()
+        sns.set(palette="colorblind")
+        color = list(sns.color_palette())[Util.SPLITS.index(split)]
+        n_inputs = len(input_keys)
+        n_subplots = n_inputs + int(plot_audio)
+        _, axes = plt.subplots(n_subplots, 1, **fig_kwargs)
+        axes_iter = iter(axes)
+        if plot_audio:
+            ax = next(axes_iter)
+            t = np.arange(0.0, len(data["audio"]))/data["audio_rate"]
+            ax.plot(t, data["audio"], color=color)
+            ax.set_ylim((-1, 1))
+            ax.set_ylabel("audio")
+            Util.remove_xticks(ax)
+        for i, keyval in enumerate((k, data["inputs"][k]) for k in input_keys):
+            key, values = keyval
+            ax = next(axes_iter)
+            t = np.arange(0.0, len(values))/data["input_rate"]
+            ax.plot(t, values, color=color)
+            if data.get("input_stats"):
+                ylim_min = np.floor(data["input_stats"][key]["min"])
+                ylim_max = np.ceil(data["input_stats"][key]["max"])
+                ax.set_ylim((ylim_min, ylim_max))
+            elif "f0" in key:
+                ax.set_ylim((0.0, 280.0))
+            elif "phase" in key:
+                ax.set_ylim((-np.pi, np.pi))
+            unit = Util.INPUT_UNITS.get(key)
+            unit = " [%s]" % unit if unit else ""
+            tex_label = Util.LATEX_FROM_KEY.get(key)
+            tex_label = tex_label if tex_label else key
+            ylabel = tex_label + unit
+            ax.set_ylabel(ylabel)
+            if i + 1 < n_inputs:
+                Util.remove_xticks(ax)
         ax.set_xlabel("time [s]")
         return Util.plot_postprocess(save_path, show)
 
