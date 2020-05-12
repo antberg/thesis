@@ -23,7 +23,7 @@ flags.DEFINE_bool("reconstruct", False,
                   "Whether to reconstruct audio of given examples.")
 flags.DEFINE_string("spec_type", "mel",
                     "Type of spectrograms to plot ('mel' or 'cqt').")
-flags.DEFINE_list("ex_ids_train", [1, 2, 3],
+flags.DEFINE_list("ex_ids_train", [1, 127, 78],
                   "Ids of examples to reconstruct from train split (if --reconstruct).")
 flags.DEFINE_list("ex_ids_test", [1, 42, 49],
                   "Ids of examples to reconstruct from test split (if --reconstruct).")
