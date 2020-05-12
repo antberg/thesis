@@ -92,6 +92,24 @@ class OscF0Preprocessor(Preprocessor):
         # Divide by denom (e.g. number of cylinders in engine to produce subharmonics)
         features["f0_sub"] = features["f0"] / self.denom
         
+        # Generate osc and phase from f0 if missing
+        for suffix in ["", "_sub"]:
+            if features.get("osc"+suffix, None) is None:
+                amplitudes = tf.ones(tf.shape(features["f0"+suffix]))
+                features["osc"+suffix] = oscillator_bank(features["f0"+suffix],
+                                                amplitudes,
+                                                sample_rate=self.rate)[:,:,tf.newaxis]
+            if features.get("phase"+suffix, None) is None:
+                omegas = 2.0 * np.pi * features["f0"+suffix] / float(self.rate)
+                phases = tf.cumsum(omegas, axis=1)
+                features["phase_unwrapped"+suffix] = phases
+                phases_wrapped = tf.math.mod(phases + np.pi, 2 * np.pi) - np.pi
+                features["phase"+suffix] = phases_wrapped
+
+        for prefix in ["osc_sub", "phase_sub", "phase_unwrapped_sub"]:
+            if features.get(prefix+"_sync", None) is None:
+                features[prefix+"_sync"] = features[prefix]
+        
         # Prepare decoder network inputs
         features["f0_scaled"] = hz_to_midi(features["f0"]) / F0_RANGE
         features["f0_scaled_mel"] = hz_to_mel(features["f0"]) / F0_RANGE_MEL
@@ -102,14 +120,6 @@ class OscF0Preprocessor(Preprocessor):
         for k in ["osc", "osc_sub", "osc_sub_sync"]:
             if features.get(k, None) is not None:
                 features[k+"_scaled"] = 0.5 + 0.5 * features[k]
-        
-        # Generate osc from f0 if it is missing
-        if features.get("osc", None) is None:
-            amplitudes = tf.ones(tf.shape(features["f0"]))
-            features["osc"] = oscillator_bank(features["f0"],
-                                              amplitudes,
-                                              sample_rate=self.rate)[:,:,tf.newaxis]
-            features["osc_scaled"] = 0.5 + 0.5*features["osc"]
 
         return features
 
