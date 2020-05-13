@@ -75,13 +75,14 @@ class Util:
                                          spec_type="mel",
                                          split="all",
                                          plot_f0=False,
+                                         ref=10000000000.0,
                                          save_path=None,
                                          show=True, **fig_kwargs):
         '''Plot spectrogram for a given example.'''
         if fig_kwargs.get("figsize", None) is None:
             fig_kwargs["figsize"] = (4, 8)
         if spec_type == "mel":
-            S_dB = Util.get_mel_spectrogram(data[audio_key], data["audio_rate"])
+            S_dB = Util.get_mel_spectrogram(data[audio_key], data["audio_rate"], ref=ref)
             specshow_kw = dict(y_axis="mel")
         elif spec_type == "cqt":
             fmin = 20.0
@@ -89,7 +90,7 @@ class Util:
             n_octaves = int(np.log(data["audio_rate"] / 2 / fmin) / np.log(2))
             n_bins = bins_per_octave * n_octaves
             cqt_kw = dict(fmin=fmin, n_bins=n_bins, bins_per_octave=bins_per_octave)
-            S_dB = Util.get_cqt_spectrogram(data[audio_key], data["audio_rate"], **cqt_kw)
+            S_dB = Util.get_cqt_spectrogram(data[audio_key], data["audio_rate"], ref=ref, **cqt_kw)
             specshow_kw = cqt_kw
             specshow_kw.update(dict(y_axis="cqt_hz"))
             specshow_kw.pop("n_bins")
@@ -98,7 +99,10 @@ class Util:
         sns.set(palette="colorblind")
         color = list(sns.color_palette())[Util.SPLITS.index(split)]
         _, ax = plt.subplots(1, 1, **fig_kwargs)
-        specshow(S_dB, x_axis="time", sr=data["audio_rate"], fmax=data["audio_rate"]/2, ax=ax, **specshow_kw)
+        #ax = plt.subplot(1, 1, 1)
+        specshow(S_dB, x_axis="time", sr=data["audio_rate"], fmax=data["audio_rate"]/2, ax=ax,
+                       cmap="magma", vmin=-140, vmax=-70, **specshow_kw)
+        #plt.colorbar()
         if plot_f0:
             f0 = data["inputs"]["f0"]
             t = np.arange(0.0, len(f0))/data["input_rate"]

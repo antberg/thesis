@@ -107,7 +107,10 @@ def main(argv):
                     audio_syn_path = os.path.join(data_dir, "audio_%s_%d_syn.wav" % (split, example_id))
                     evaluator.save_audio_to_wav(data["audio"], audio_rec_path, data["audio_rate"])
                     evaluator.save_audio_to_wav(data["audio_synthesized"], audio_syn_path, data["audio_rate"])
-
+                    for k in ["additive", "subtractive", "transients"]:
+                        audio_path = os.path.join(data_dir, "audio_%s_%d_syn_%s.wav" % (split, example_id, k))
+                        evaluator.save_audio_to_wav(data["audio_"+k], audio_path, data["audio_rate"])
+                    
                     # Store spectrograms
                     spec_rec_path = os.path.join(fig_dir, "spec_%s_%d_rec.%s" % (split, example_id, FIG_EXTENSION))
                     spec_syn_path = os.path.join(fig_dir, "spec_%s_%d_syn.%s" % (split, example_id, FIG_EXTENSION))
@@ -125,6 +128,12 @@ def main(argv):
                                                           spec_type=FLAGS.spec_type,
                                                           save_path=spec_diff_path,
                                                           show=FLAGS.show)
+                    for k in ["additive", "subtractive", "transients"]:
+                        spec_path = os.path.join(fig_dir, "spec_%s_%d_syn_%s.%s" % (split, example_id, k, FIG_EXTENSION))
+                        Util.plot_spectrogram_from_dict(data, audio_key="audio_"+k,
+                                                              spec_type=FLAGS.spec_type,
+                                                              save_path=spec_rec_path,
+                                                              show=FLAGS.show)
 
         # Synthesize audio based on specified control signals
         if FLAGS.control:

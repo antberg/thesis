@@ -47,10 +47,19 @@ class ModelEvaluator:
         audio = batch["audio"].numpy() if batch.get("audio", None) is not None else None
         features = self.model.encode(batch)
         audio_synthesized = self.model.decode(features).numpy()
+        dag_outputs = self.model.get_controls(features)
+        audio_components = dict()
+        for k in ["additive", "subtractive", "transients"]:
+            if dag_outputs.get(k):
+                audio_components[k] = dag_outputs[k]["signal"].numpy()
+            else:
+                audio_components[k] = np.zeros(audio_synthesized.shape)
         for batch_id in range(n_batches):
             data = dict()
             data["audio"] = audio[batch_id,:] if audio is not None else None
             data["audio_synthesized"] = audio_synthesized[batch_id,:]
+            for k in ["additive", "subtractive", "transients"]:
+                data["audio_" + k] = audio_components[k][batch_id,:]
             data["audio_rate"] = self.data_provider.audio_rate
             data["input_rate"] = self.data_provider.input_rate
             data["inputs"] = dict()
