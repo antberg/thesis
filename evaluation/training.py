@@ -36,18 +36,30 @@ class TrainingEvaluator:
                 self.data[model_id] = dict()
             self.data[model_id][split] = pd.read_csv(csv_path, delimiter=",")
     
-    def plot_loss(self, model_id, plot_split="all", smooth=0.0, ax=plt, **plot_kwargs):
+    @staticmethod
+    def get_smoothed(y, a=0.95):
+        y_smooth = y.copy()
+        for i in range(1, y.shape[-1]):
+            y_smooth[i] = a * y_smooth[i-1] + (1 - a) * y[i-1]
+        return y_smooth
+    
+    def plot_loss(self, model_id, plot_split="all", smooth=0.0, iter_per_epoch=1, ax=plt, **plot_kwargs):
         for split, df in self.data[model_id].items():
             if plot_split != "all" and split != plot_split:
                 continue
-            linespec = "-" if split == "train" else "--"
+            linespec = "-" if split == "train" else ":"
             loss = df["Value"]
             step = df["Step"]
-            ax.plot(step, loss, **plot_kwargs)
+            epoch = step / iter_per_epoch
             if smooth > 0.0:
-                raise NotImplementedError
+                ax.plot(epoch, loss, linespec, alpha=0.2, **plot_kwargs)
+                ax.plot(epoch, self.get_smoothed(loss), linespec, label=split, **plot_kwargs)
+            else:
+                ax.plot(epoch, loss, linespec, **plot_kwargs)
+            ax.set_xlabel("epoch")
 
-    def plot_losses(self, model_ids=None, save_path=None, show=True, **fig_kwargs):
+    def plot_losses(self, model_ids=None, smooth=0.0, iter_per_epoch=1, save_path=None, show=True,
+                    ylim=None, plot_split="all", **fig_kwargs):
         if model_ids is None:
             model_ids = self.data.keys()
         if not fig_kwargs.get("figsize"):
@@ -57,5 +69,9 @@ class TrainingEvaluator:
         for model_id, color in zip(self.data, sns.color_palette()):
             if model_id not in model_ids: # do this to make sure each model gets a unique color
                 continue
-            self.plot_loss(model_id, ax=ax, color=color)
+            self.plot_loss(model_id, smooth=smooth, iter_per_epoch=iter_per_epoch,
+                                     plot_split=plot_split, ax=ax, color=color)
+            plt.legend(loc="lower left")
+        if ylim:
+            plt.ylim(ylim)
         return Util.plot_postprocess(save_path, show)
