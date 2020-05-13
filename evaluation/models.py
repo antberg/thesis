@@ -5,7 +5,6 @@ import time
 import numpy as np
 import soundfile as sf
 import tensorflow as tf
-import tensorflow_datasets as tfds
 
 from .util import Util
 
@@ -13,11 +12,20 @@ class ModelEvaluator:
     '''
     Class for evaluating models.
     '''
-    def __init__(self, model_builder, data_provider, loss_function):
+    def __init__(self, model_builder, data_provider, loss_function, summary=False):
         self.model_builder = model_builder
         self.model = model_builder.build()
         self.data_provider = data_provider
         self.loss_function = loss_function
+
+        # Print model summary
+        if summary:
+            strategy = tf.distribute.MirroredStrategy()
+            def run(fn, *args, **kwargs):
+                return strategy.experimental_run_v2(fn, args=args, kwargs=kwargs)
+            batch = self.data_provider.get_single_batch(batch_size=1, batch_number=1)
+            _ = run(tf.function(self.model.__call__), batch)
+            print(self.model.summary())
     
     # ================
     # AUDIO GENERATION

@@ -15,6 +15,8 @@ flags.DEFINE_list("model_ids", None,
                   "Models to evaluate")
 flags.DEFINE_bool("show", False,
                   "Whether to show the plots.")
+flags.DEFINE_bool("summary", False,
+                  "Whether to print model summary.")
 flags.DEFINE_bool("losses", False,
                   "Whether to compute reconstruction losses.")
 flags.DEFINE_string("loss_type", "mel",
@@ -78,7 +80,8 @@ def main(argv):
 
             # Initialize data provider and model evaluator
             data_provider = TFRecordProvider(model_builder.data_dir, split=split)
-            evaluator = ModelEvaluator(model_builder, data_provider, loss_funcion)
+            summary = FLAGS.summary and split == "train"
+            evaluator = ModelEvaluator(model_builder, data_provider, loss_funcion, summary=summary)
 
             # Compute loss and inference times
             if FLAGS.losses:
