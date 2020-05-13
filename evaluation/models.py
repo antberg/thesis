@@ -145,9 +145,9 @@ class CQTLoss:
         for batch_id in range(n_batches):
             cqt_target = Util.get_cqt_spectrogram(target_audio.numpy()[batch_id,:],
                                                   self.sample_rate,
-                                                  scale="amp")
+                                                  ref=1.0)
             cqt_synth = Util.get_cqt_spectrogram(audio.numpy()[batch_id,:],
                                                  self.sample_rate,
-                                                 scale="amp")
+                                                 ref=1.0)
             loss += np.mean(np.abs(cqt_target - cqt_synth))
         return loss / n_batches

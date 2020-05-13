@@ -157,7 +157,7 @@ class Util:
     # =====================
 
     @staticmethod
-    def get_mel_spectrogram(audio, sample_rate=48000, n_fft=4092, n_mels=512):
+    def get_mel_spectrogram(audio, sample_rate=48000, n_fft=4092, n_mels=512, ref=np.max):
         '''Get Mel spectrogram from dict.'''
         audio = np.asfortranarray(audio)
         S = librosa.feature.melspectrogram(y=audio,
@@ -165,17 +165,17 @@ class Util:
                                            n_fft=n_fft,
                                            n_mels=n_mels,
                                            fmax=sample_rate/2)
-        S_dB = librosa.power_to_db(S, ref=np.max)
+        S_dB = librosa.power_to_db(S, ref=ref)
         return S_dB
 
     @staticmethod
-    def get_cqt_spectrogram(audio, sample_rate=48000, scale="db", **kwargs):
+    def get_cqt_spectrogram(audio, sample_rate=48000, scale="db", ref=np.max, **kwargs):
         '''Get constant-Q transform spectrogram from dict.'''
         audio = np.asfortranarray(audio)
         S = np.abs(librosa.cqt(audio, sr=sample_rate, **kwargs))
         if scale == "amp":
             return S
         if scale == "db":
-            S_dB = librosa.amplitude_to_db(S, ref=np.max)
+            S_dB = librosa.amplitude_to_db(S, ref=ref)
             return S_dB
         raise ValueError("%s is not a valid scale." % scale)
