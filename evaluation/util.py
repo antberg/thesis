@@ -144,7 +144,7 @@ class Util:
             elif "f0" in key:
                 ax.set_ylim((0.0, 280.0))
             elif "phase" in key:
-                ax.set_ylim((-np.pi, np.pi))
+                ax.set_ylim((-3.5, 3.5))
             unit = Util.INPUT_UNITS.get(key)
             unit = " [%s]" % unit if unit else ""
             tex_label = Util.LATEX_FROM_KEY.get(key)

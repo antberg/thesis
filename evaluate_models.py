@@ -132,7 +132,7 @@ def main(argv):
                         spec_path = os.path.join(fig_dir, "spec_%s_%d_syn_%s.%s" % (split, example_id, k, FIG_EXTENSION))
                         Util.plot_spectrogram_from_dict(data, audio_key="audio_"+k,
                                                               spec_type=FLAGS.spec_type,
-                                                              save_path=spec_rec_path,
+                                                              save_path=spec_path,
                                                               show=FLAGS.show)
 
         # Synthesize audio based on specified control signals
@@ -148,6 +148,9 @@ def main(argv):
                 # Store audio
                 audio_path = os.path.join(data_dir, "control_%s.wav" % control_signal_label)
                 evaluator.save_audio_to_wav(data["audio_synthesized"], audio_path, data["audio_rate"])
+                for k in ["additive", "subtractive", "transients"]:
+                    audio_path = os.path.join(data_dir, "control_%s_%s.wav" % (control_signal_label, k))
+                    evaluator.save_audio_to_wav(data["audio_"+k], audio_path, data["audio_rate"])
 
                 # Plot inputs
                 fig_path = os.path.join(fig_dir, "inputs_%s.%s" % (control_signal_label, FIG_EXTENSION))
@@ -162,6 +165,12 @@ def main(argv):
                                                       spec_type=FLAGS.spec_type,
                                                       save_path=spec_path,
                                                       show=FLAGS.show)
+                for k in ["additive", "subtractive", "transients"]:
+                    spec_path = os.path.join(fig_dir, "control_%s_%s.%s" % (control_signal_label, k, FIG_EXTENSION))
+                    Util.plot_spectrogram_from_dict(data, audio_key="audio_"+k,
+                                                          spec_type=FLAGS.spec_type,
+                                                          save_path=spec_path,
+                                                          show=FLAGS.show)
 
 if __name__ == "__main__":
     app.run(main)
