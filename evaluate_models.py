@@ -2,6 +2,7 @@ import os
 from absl import app, logging, flags
 import pprint
 import numpy as np
+import librosa
 
 from models.losses import TimeFreqResMelSpectralLoss
 from data.data_provider import TFRecordProvider
@@ -123,7 +124,9 @@ def main(argv):
                                                                       spec_type=FLAGS.spec_type,
                                                                       save_path=spec_syn_path,
                                                                       show=FLAGS.show)
-                    diff_dB = np.abs(rec_dB - syn_dB)
+                    rec_amp = librosa.core.db_to_amplitude(rec_dB)
+                    syn_amp = librosa.core.db_to_amplitude(syn_dB)
+                    diff_dB = librosa.core.amplitude_to_db(np.abs(rec_amp - syn_amp))
                     Util.plot_spectrogram_from_db(diff_dB, data["audio_rate"],
                                                           specshow_kw=kw,
                                                           save_path=spec_diff_path,
