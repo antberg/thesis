@@ -71,16 +71,43 @@ class Util:
                        labelbottom=False) # labels along the bottom edge are off
     
     @staticmethod
+    def plot_spectrogram_from_db(S_dB, sample_rate,
+                                       data=None,
+                                       split="all",
+                                       plot_f0=False,
+                                       save_path=None,
+                                       show=True,
+                                       specshow_kw={},
+                                       **fig_kwargs):
+        if fig_kwargs.get("figsize", None) is None:
+            fig_kwargs["figsize"] = (4, 7)
+        sns.set(palette="colorblind")
+        color = list(sns.color_palette())[Util.SPLITS.index(split)]
+        _, ax = plt.subplots(1, 1, **fig_kwargs)
+        #ax = plt.subplot(1, 1, 1)
+        #specshow(S_dB, x_axis="time", sr=sample_rate, fmax=sample_rate/2,
+        #               cmap="magma", **specshow_kw)
+        specshow(S_dB, x_axis="time", sr=sample_rate, fmax=sample_rate/2, ax=ax,
+                       cmap="magma", vmin=-30, vmax=35, **specshow_kw)
+        #plt.colorbar()
+        if plot_f0:
+            f0 = data["inputs"]["f0"]
+            t = np.arange(0.0, len(f0))/data["input_rate"]
+            ax.plot(t, f0, "--", color=color, label="$f_0$")
+            plt.legend(bbox_to_anchor=(0, 1, 1, 0), loc="lower right")
+        ax.set_ylabel("frequency [Hz]")
+        ax.set_xlabel("time [s]")
+        return Util.plot_postprocess(save_path, show)
+    
+    @staticmethod
     def plot_spectrogram_from_dict(data, audio_key="audio",
                                          spec_type="mel",
                                          split="all",
                                          plot_f0=False,
-                                         ref=10000000000.0,
+                                         ref=1.0,
                                          save_path=None,
                                          show=True, **fig_kwargs):
         '''Plot spectrogram for a given example.'''
-        if fig_kwargs.get("figsize", None) is None:
-            fig_kwargs["figsize"] = (4, 8)
         if spec_type == "mel":
             S_dB = Util.get_mel_spectrogram(data[audio_key], data["audio_rate"], ref=ref)
             specshow_kw = dict(y_axis="mel")
@@ -96,21 +123,15 @@ class Util:
             specshow_kw.pop("n_bins")
         else:
             raise ValueError("%s is not a valid spectrogram type.")
-        sns.set(palette="colorblind")
-        color = list(sns.color_palette())[Util.SPLITS.index(split)]
-        _, ax = plt.subplots(1, 1, **fig_kwargs)
-        #ax = plt.subplot(1, 1, 1)
-        specshow(S_dB, x_axis="time", sr=data["audio_rate"], fmax=data["audio_rate"]/2, ax=ax,
-                       cmap="magma", vmin=-140, vmax=-70, **specshow_kw)
-        #plt.colorbar()
-        if plot_f0:
-            f0 = data["inputs"]["f0"]
-            t = np.arange(0.0, len(f0))/data["input_rate"]
-            ax.plot(t, f0, "--", color=color, label="$f_0$")
-            plt.legend(bbox_to_anchor=(0, 1, 1, 0), loc="lower right")
-        ax.set_ylabel("frequency [Hz]")
-        ax.set_xlabel("time [s]")
-        return Util.plot_postprocess(save_path, show)
+        Util.plot_spectrogram_from_db(S_dB, data["audio_rate"],
+                                            data=data,
+                                            split=split,
+                                            plot_f0=plot_f0,
+                                            save_path=save_path,
+                                            show=show,
+                                            specshow_kw=specshow_kw,
+                                            **fig_kwargs)
+        return S_dB, specshow_kw
     
     @staticmethod
     def plot_inputs_from_dict(data, plot_audio=True, split="all", input_keys=None, save_path=None, show=True, **fig_kwargs):

@@ -115,17 +115,17 @@ def main(argv):
                     spec_rec_path = os.path.join(fig_dir, "spec_%s_%d_rec.%s" % (split, example_id, FIG_EXTENSION))
                     spec_syn_path = os.path.join(fig_dir, "spec_%s_%d_syn.%s" % (split, example_id, FIG_EXTENSION))
                     spec_diff_path = os.path.join(fig_dir, "spec_%s_%d_diff.%s" % (split, example_id, FIG_EXTENSION))
-                    Util.plot_spectrogram_from_dict(data, audio_key="audio",
-                                                          spec_type=FLAGS.spec_type,
-                                                          save_path=spec_rec_path,
-                                                          show=FLAGS.show)
-                    Util.plot_spectrogram_from_dict(data, audio_key="audio_synthesized",
-                                                          spec_type=FLAGS.spec_type,
-                                                          save_path=spec_syn_path,
-                                                          show=FLAGS.show)
-                    data["audio_diff"] = np.abs(data["audio"] - data["audio_synthesized"])
-                    Util.plot_spectrogram_from_dict(data, audio_key="audio_diff",
-                                                          spec_type=FLAGS.spec_type,
+                    rec_dB, kw = Util.plot_spectrogram_from_dict(data, audio_key="audio",
+                                                                       spec_type=FLAGS.spec_type,
+                                                                       save_path=spec_rec_path,
+                                                                       show=FLAGS.show)
+                    syn_dB, _ = Util.plot_spectrogram_from_dict(data, audio_key="audio_synthesized",
+                                                                      spec_type=FLAGS.spec_type,
+                                                                      save_path=spec_syn_path,
+                                                                      show=FLAGS.show)
+                    diff_dB = np.abs(rec_dB - syn_dB)
+                    Util.plot_spectrogram_from_db(diff_dB, data["audio_rate"],
+                                                          specshow_kw=kw,
                                                           save_path=spec_diff_path,
                                                           show=FLAGS.show)
                     for k in ["additive", "subtractive", "transients"]:
