@@ -88,7 +88,7 @@ class Util:
         #specshow(S_dB, x_axis="time", sr=sample_rate, fmax=sample_rate/2,
         #               cmap="magma", **specshow_kw)
         specshow(S_dB, x_axis="time", sr=sample_rate, fmax=sample_rate/2, ax=ax,
-                       cmap="magma", vmin=-30, vmax=35, **specshow_kw)
+                       cmap="magma", vmin=-40, vmax=35, **specshow_kw)
         #plt.colorbar()
         if plot_f0:
             f0 = data["inputs"]["f0"]
