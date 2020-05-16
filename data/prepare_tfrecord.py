@@ -16,8 +16,6 @@ import numpy as np
 import tensorflow as tf
 from absl import app, flags, logging
 import matplotlib.pyplot as plt
-#import sounddevice as sd
-from ddsp.core import oscillator_bank
 from scipy.interpolate import interp1d
 from scipy.signal import correlate, hilbert
 
@@ -48,11 +46,7 @@ def get_int64_feature(value):
 
 def _oscillator_bank(f0, sample_rate):
     '''Return an oscillator signal corresponding to f0.'''
-    N = np.size(f0)
-    f0 = f0.reshape((1, N, 1))
-    a = np.ones((1, N, 1))
-    y = oscillator_bank(f0, a, sample_rate)
-    return y.numpy()[0,:]
+    return np.sin(2 * np.pi * np.cumsum(f0) / sample_rate)
 
 def _resample(y, fs_old, fs_new, interp_method="linear"):
     '''Resample a signal through interpolation'''
@@ -170,7 +164,7 @@ def get_synchronized_osc(audio, f0, sample_rate, frame_rate,
                 osc_window, f0_window/sample_rate)
     
     # Compute phase of osc using analytic continuation via the Hilbert transform
-    phase = np.angle(osc + 1j * hilbert(osc))
+    phase = np.angle(hilbert(osc))
     phase_unwrapped = np.unwrap(phase, discont=np.pi/2)
 
     # Create subharmonic to osc (osc_sub)
@@ -220,12 +214,41 @@ def get_synchronized_osc(audio, f0, sample_rate, frame_rate,
         data["osc_sub_sync"] = _resample(osc_sub_sync, sample_rate, frame_rate)
         data["phase_unwrapped_sub_sync"] = _resample(phase_unwrapped_sub_sync, sample_rate, frame_rate)
         data["phase_sub_sync"] = _resample(phase_sub_sync, sample_rate, frame_rate)
-
+    
     # Return
     return data
 
 def _wrap(phases):
     return (phases + np.pi) % (2 * np.pi) - np.pi
+
+def _get_transient_times_tf(phase, n_transients=500, n_transients_per_period=1):
+    '''
+    Get onset times of transients given phase using TensorFlow function.
+    '''
+    raise NotImplementedError # this implementations does not work yet
+    # Create phase grid (phase_transients)
+    phase = tf.convert_to_tensor(phase, dtype=tf.float32)
+    diff_phase_transients = 2 * np.pi / n_transients_per_period
+    n_samples = len(phase)
+    t_phase = tf.linspace(0.0, 1.0, n_samples)
+    phase_transients = diff_phase_transients * tf.range(1.0, n_transients + 1.0, dtype=tf.float32)
+    n_shift = tf.floor((phase_transients[0] - phase[0]) / diff_phase_transients)
+    phase_transients -= n_shift * diff_phase_transients
+
+    # Compute interpolation weights from the difference between phase and phase_transients
+    phase_matrix = phase[tf.newaxis,:]
+    phase_transients_matrix = phase_transients[:,tf.newaxis] # may need a [tf.newaxis, tf.newaxis, :] later
+    phase_distance = tf.abs(phase_matrix - phase_transients_matrix)
+    phase_distance_argmin = tf.argsort(phase_distance)
+    indices = tf.reshape(phase_distance_argmin[:,0:2], (-1,))
+    weights = tf.gather(phase, indices)
+    weights = tf.reshape(weights, (-1, 2))
+    weights = tf.abs(weights - phase_transients_matrix) / tf.abs(weights[:,:1] - weights[:,1:])
+    weighted_t = tf.sparse.sparse_dense_matmul(weights, t_phase[:,tf.newaxis])
+    #max_diff = tf.math.reduce_max(phase[1:]-phase[:-1])
+    #weights = tf.nn.relu(max_diff - phase_distance) / max_diff
+    #weighted_t = tf.linalg.matvec(weights, t_phase, False, True)
+    return weighted_t.numpy()
 
 def _get_transient_times(phase, n_transients=500, n_transients_per_period=1, sample_rate=1):
     '''Get onset times of transients given phase.'''
@@ -309,7 +332,7 @@ def split_ids(n_windows_total, splits):
     n_windows["train"] = n_windows["total"] - n_windows["valid"] - n_windows["test"]
     ids = dict()
     ids["total"] = list(range(n_windows["total"]))
-    random.shuffle(ids["total"])
+    random.Random(1337).shuffle(ids["total"]) # use a constant seed in case I have to update dataset
     ids_begin = 0
     for split in ["train", "valid", "test"]:
         ids_end = ids_begin + n_windows[split]
@@ -428,7 +451,6 @@ def main(argv):
                 if FLAGS.inspect_windows:
                     plt.figure(figsize=(8, 4))
                     plot_audio_f0(window["audio"], audio_rate, window["f0"], input_rate)
-                    #sd.play(window["audio"], audio_rate)
                     _, axes = plt.subplots(len(input_keys), 1)
                     if len(input_keys) < 2:
                         key = input_keys[0]
@@ -441,7 +463,6 @@ def main(argv):
                             ax.plot(window[key])
                             ax.set_title(key)
                     plt.show()
-                    #sd.wait()
             logging.info("Done with '%s'." % data_path)
     
     metadata = {
