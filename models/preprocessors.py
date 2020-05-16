@@ -38,6 +38,9 @@ class F0Preprocessor(Preprocessor):
         # Divide by denom (e.g. number of cylinders in engine to produce subharmonics)
         features["f0"] /= self.denom
 
+        # Set additive input
+        features["f0_additive"] = features["f0"]
+
         # Prepare decoder network inputs
         if self.feature_domain == "freq":
             features["f0_scaled"] = hz_to_midi(features["f0"]) / F0_RANGE
@@ -91,6 +94,9 @@ class OscF0Preprocessor(Preprocessor):
         
         # Divide by denom (e.g. number of cylinders in engine to produce subharmonics)
         features["f0_sub"] = features["f0"] / self.denom
+
+        # Set additive input
+        features["f0_additive"] = features["f0_sub"]
         
         # Generate osc and phase from f0 if missing
         for suffix in ["", "_sub"]:
@@ -152,6 +158,9 @@ class PhaseF0Preprocessor(Preprocessor):
         
         # Divide by denom (e.g. number of cylinders in engine to produce subharmonics)
         features["f0_sub"] = features["f0"] / self.denom
+
+        # Set additive input
+        features["f0_additive"] = features["f0_sub"]
         
         # Prepare decoder network inputs
         features["f0_scaled"] = hz_to_midi(features["f0"]) / F0_RANGE

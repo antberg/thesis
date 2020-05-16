@@ -22,7 +22,7 @@ class HarmonicPlusNoise(ProcessorGroup):
         self.additive = Additive(n_samples=self.n_samples, sample_rate=self.audio_rate, name="additive")
         self.subtractive = FilteredNoise(n_samples=self.n_samples, name="subtractive", initial_bias=-2.0)
         self.add = Add()
-        dag = [(self.additive, ["amps", "harmonic_distribution", "f0"]),
+        dag = [(self.additive, ["amps", "harmonic_distribution", "f0_additive"]),
                (self.subtractive, ["noise_magnitudes"]),
                (self.add, ["additive/signal", "subtractive/signal"])]
         super(HarmonicPlusNoise, self).__init__(dag, name)
@@ -79,7 +79,7 @@ class HarmonicPlusNoisePlusTransients(ProcessorGroup):
         self.transients = Transients(n_samples=self.n_samples, sample_rate=self.audio_rate, name="transients")
         self.hpn = Add(name="hpn")
         self.hpnt = Add(name="hpnt")
-        dag = [(self.additive, ["amps", "harmonic_distribution", "f0"]),
+        dag = [(self.additive, ["amps", "harmonic_distribution", "f0_additive"]),
                (self.subtractive, ["noise_magnitudes"]),
                (self.transients, ["transient_amps", "transient_distribution"]),
                (self.hpn, ["additive/signal", "subtractive/signal"]),
@@ -144,7 +144,7 @@ class HarmonicPlusTransients(ProcessorGroup):
         self.additive = Additive(n_samples=self.n_samples, sample_rate=self.audio_rate, name="additive")
         self.transients = Transients(n_samples=self.n_samples, sample_rate=self.audio_rate, name="transients")
         self.hpt = Add(name="hpt")
-        dag = [(self.additive, ["amps", "harmonic_distribution", "f0"]),
+        dag = [(self.additive, ["amps", "harmonic_distribution", "f0_additive"]),
                (self.transients, ["transient_amps", "transient_distribution"]),
                (self.hpt, ["additive/signal", "transients/signal"])]
         super(HarmonicPlusTransients, self).__init__(dag, name)
@@ -190,7 +190,7 @@ class HarmonicPlusTransientsPhase(ProcessorGroup):
                                         initial_phase_shift=self.initial_phase_shift,
                                         name="transients")
         self.add = Add(name="hptp")
-        dag = [(self.additive, ["amps", "harmonic_distribution", "f0"]),
+        dag = [(self.additive, ["amps", "harmonic_distribution", "f0_additive"]),
                (self.transients, ["transient_amps", "transient_distribution", "phase_unwrapped"]),
                (self.add, ["additive/signal", "transients/signal"])]
         super(HarmonicPlusTransientsPhase, self).__init__(dag, name)
