@@ -65,7 +65,10 @@ class ModelEvaluator:
             data["inputs"] = dict()
             for input_key in self.data_provider.input_keys:
                 if input_keys == "all" or input_key in input_keys:
-                    data["inputs"][input_key] = features[input_key].numpy()[batch_id,:]
+                    if features.get(input_key, None) is not None:
+                        data["inputs"][input_key] = features[input_key].numpy()[batch_id,:]
+                    else:
+                        data["inputs"][input_key] = np.zeros(features["f0"].shape[-1])
             data_list.append(data)
         return data_list if n_batches > 1 else data_list[0]
     
