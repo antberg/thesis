@@ -70,12 +70,13 @@ class OscF0Preprocessor(Preprocessor):
     Preprocessor for f0 and osc features. Scales f0 envelope by converting to
     MIDI scale and normalizing to [0, 1].
     '''
-    def __init__(self, time_steps=None, denom=1., rate=None):
+    def __init__(self, time_steps=None, denom=1., f0_additive="f0", rate=None):
         if time_steps is None:
             raise ValueError("time_steps cannot be None.")
         super().__init__()
         self.time_steps = time_steps
         self.denom = denom
+        self.f0_additive = f0_additive
         self.rate = rate
 
     def __call__(self, features, training=True):
@@ -96,7 +97,7 @@ class OscF0Preprocessor(Preprocessor):
         features["f0_sub"] = features["f0"] / self.denom
 
         # Set additive input
-        features["f0_additive"] = features["f0_sub"]
+        features["f0_additive"] = features[self.f0_additive]
         
         # Generate osc and phase from f0 if missing
         for suffix in ["", "_sub"]:

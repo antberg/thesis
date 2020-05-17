@@ -77,6 +77,10 @@ class ModelBuilder:
         return self.config.get("input_keys", ["f0_sub_scaled", "osc_scaled"])
     
     @property
+    def f0_additive(self):
+        return self.config.get("f0_additive", "f0")
+    
+    @property
     def losses(self):
         return self.config.get("losses", None)
     
@@ -109,6 +113,7 @@ class ModelBuilder:
                                          n_noise_magnitudes=self.n_noise_magnitudes,
                                          rnn_channels=self.rnn_channels,
                                          input_keys=self.input_keys,
+                                         f0_additive=self.f0_additive,
                                          losses=self.losses)
         elif self.model_type == "osc_f0_rnn_fc_hpnt_decoder":
             model = OscF0RnnFcHPNTDecoder(window_secs=self.window_secs,
@@ -120,6 +125,7 @@ class ModelBuilder:
                                           n_transient_distribution=self.n_transient_distribution,
                                           rnn_channels=self.rnn_channels,
                                           input_keys=self.input_keys,
+                                          f0_additive=self.f0_additive,
                                           losses=self.losses)
         elif self.model_type == "osc_f0_rnn_fc_hpt_decoder":
             model = OscF0RnnFcHPTDecoder(window_secs=self.window_secs,
@@ -649,6 +655,23 @@ def get_model_builder_from_id(model_id):
                                                mag_weight=0.0,
                                                logmag_weight=1.0)]
         )
+    if model_id == "final_mini_cyl2":
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_final_mini",
+            checkpoint_dir="./data/weights/final_mini/"+model_id,
+            batch_size=3,
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            window_secs=2,
+            input_keys=["f0_scaled_mel"],
+            f0_additive="f0_sub",
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
+                                               time_res=1/250,
+                                               loss_type="L1",
+                                               mag_weight=0.0,
+                                               logmag_weight=1.0)]
+        )
     if model_id == "final_mini_phase":
         return ModelBuilder(
             model_id=model_id,
@@ -717,6 +740,13 @@ def get_model_builder_from_id(model_id):
                                                mag_weight=0.0,
                                                logmag_weight=1.0)]
         )
+    
+    # NOTE: Below are some models that I created because I realized that none of the above "final"
+    #       models use integer multiples of f0/Nc in the harmonic synthesizer. However, it turns
+    #       out that using f0 (with the same number of harmonics) is better, partly probably
+    #       because it covers a wider frequency range. Therefore, I still use the above models in
+    #       the report.
+
     # ==========================================================================================
     # FINAL (FOR REAL THIS TIME) MODELS USED IN THE REPORT UNDER THE "RECONSTRUCTION" EXPERIMENT
     # ==========================================================================================
@@ -752,6 +782,7 @@ def get_model_builder_from_id(model_id):
             model_type="osc_f0_rnn_fc_hpn_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel"],
+            f0_additive="f0_sub",
             f0_denom=4.0,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
@@ -771,6 +802,7 @@ def get_model_builder_from_id(model_id):
             model_type="osc_f0_rnn_fc_hpn_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_additive="f0_sub",
             f0_denom=4.0,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
@@ -790,6 +822,7 @@ def get_model_builder_from_id(model_id):
             model_type="osc_f0_rnn_fc_hpn_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_additive="f0_sub",
             f0_denom=4.0,
             rnn_channels=[2048],
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
@@ -810,6 +843,7 @@ def get_model_builder_from_id(model_id):
             model_type="osc_f0_rnn_fc_hpnt_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_additive="f0_sub",
             f0_denom=4.0,
             n_transient_distribution=160,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
@@ -843,6 +877,7 @@ def get_model_builder_from_id(model_id):
             model_type="osc_f0_rnn_fc_hpn_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel"],
+            f0_additive="f0_sub",
             f0_denom=4.0,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
@@ -859,6 +894,7 @@ def get_model_builder_from_id(model_id):
             model_type="osc_f0_rnn_fc_hpn_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_additive="f0_sub",
             f0_denom=4.0,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
@@ -875,6 +911,7 @@ def get_model_builder_from_id(model_id):
             model_type="osc_f0_rnn_fc_hpnt_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel", "phase_sub_sync_scaled"],
+            f0_additive="f0_sub",
             f0_denom=4.0,
             n_transient_distribution=160,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,

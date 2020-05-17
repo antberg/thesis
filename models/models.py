@@ -76,6 +76,7 @@ class OscF0RnnFcHPNDecoder(Autoencoder):
                        rnn_channels=512,
                        layers_per_stack=3,
                        input_keys=["f0_sub_scaled", "osc_scaled"],
+                       f0_additive="f0",
                        losses=None,
                        name="osc_f0_rnn_fc_hpn_decoder"):
         # Initialize preprocessor
@@ -84,6 +85,7 @@ class OscF0RnnFcHPNDecoder(Autoencoder):
         time_steps = int(window_secs * input_rate)
         preprocessor = OscF0Preprocessor(time_steps=time_steps,
                                          denom=f0_denom,
+                                         f0_additive=f0_additive,
                                          rate=input_rate)
 
         # Initialize decoder
@@ -130,6 +132,7 @@ class OscF0RnnFcHPNTDecoder(Autoencoder):
                        rnn_channels=512,
                        layers_per_stack=3,
                        input_keys=["f0_sub_scaled", "osc_scaled"],
+                       f0_additive="f0",
                        losses=None,
                        name="multi_input_rnn_fc_hpnt_decoder"):
         # Initialize preprocessor
@@ -138,6 +141,7 @@ class OscF0RnnFcHPNTDecoder(Autoencoder):
         time_steps = int(window_secs * input_rate)
         preprocessor = OscF0Preprocessor(time_steps=time_steps,
                                          denom=f0_denom,
+                                         f0_additive=f0_additive,
                                          rate=input_rate)
 
         # Initialize decoder
@@ -185,6 +189,7 @@ class OscF0RnnFcHPTDecoder(Autoencoder):
                        rnn_channels=512,
                        layers_per_stack=3,
                        input_keys=["f0_sub_scaled", "osc_scaled"],
+                       f0_additive="f0",
                        losses=None,
                        name="multi_input_rnn_fc_hpt_decoder"):
         # Initialize preprocessor
@@ -193,6 +198,7 @@ class OscF0RnnFcHPTDecoder(Autoencoder):
         time_steps = int(window_secs * input_rate)
         preprocessor = OscF0Preprocessor(time_steps=time_steps,
                                          denom=f0_denom,
+                                         f0_additive=f0_additive,
                                          rate=input_rate)
 
         # Initialize decoder
