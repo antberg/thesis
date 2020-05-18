@@ -14,15 +14,15 @@ class Util:
     Utility class with methods for storing files, postprocessing plots etc.
     '''
     PLOT_PALETTE = "colorblind"
-    SPLITS = ["all", "train", "test", "valid"]
+    SPLITS = ["train", "valid", "test", "all"]
     INPUT_UNITS = {"f0": "Hz",
                    "phase": "rad/s",
                    "phase_sub": "rad/s",
                    "phase_sub_sync": "rad/s"}
     LATEX_FROM_KEY = {"f0": "$f_0$",
                       "phase": "$\phi$",
-                      "phase_sub": "$\phi$",
-                      "phase_sub_sync": "$\phi$"}
+                      "phase_sub": "$\phi_c$",
+                      "phase_sub_sync": "$\phi_c$"}
 
     # =====================
     # FILE STREAM UTILITIES
@@ -56,9 +56,9 @@ class Util:
         plt.tight_layout()
         if save_path is not None:
             plt.savefig(save_path)
+        xlim, ylim = plt.xlim(), plt.ylim()
         if show:
             plt.show()
-        xlim, ylim = plt.xlim(), plt.ylim()
         plt.close()
         return xlim, ylim
     
@@ -88,7 +88,7 @@ class Util:
         #specshow(S_dB, x_axis="time", sr=sample_rate, fmax=sample_rate/2,
         #               cmap="magma", **specshow_kw)
         specshow(S_dB, x_axis="time", sr=sample_rate, fmax=sample_rate/2, ax=ax,
-                       cmap="magma", vmin=-40, vmax=35, **specshow_kw)
+                       cmap="magma", **specshow_kw)
         #plt.colorbar()
         if plot_f0:
             f0 = data["inputs"]["f0"]
@@ -110,7 +110,7 @@ class Util:
         '''Plot spectrogram for a given example.'''
         if spec_type == "mel":
             S_dB = Util.get_mel_spectrogram(data[audio_key], data["audio_rate"], ref=ref)
-            specshow_kw = dict(y_axis="mel")
+            specshow_kw = dict(y_axis="mel", vmin=-40, vmax=35)
         elif spec_type == "cqt":
             fmin = 20.0
             bins_per_octave = 16
@@ -119,7 +119,7 @@ class Util:
             cqt_kw = dict(fmin=fmin, n_bins=n_bins, bins_per_octave=bins_per_octave)
             S_dB = Util.get_cqt_spectrogram(data[audio_key], data["audio_rate"], ref=ref, **cqt_kw)
             specshow_kw = cqt_kw
-            specshow_kw.update(dict(y_axis="cqt_hz"))
+            specshow_kw.update(dict(y_axis="cqt_hz", vmin=-50, vmax=20))
             specshow_kw.pop("n_bins")
         else:
             raise ValueError("%s is not a valid spectrogram type.")
@@ -137,7 +137,7 @@ class Util:
     def plot_inputs_from_dict(data, plot_audio=True, split="all", input_keys=None, save_path=None, show=True, **fig_kwargs):
         '''Plot inputs for a given example.'''
         if fig_kwargs.get("figsize", None) is None:
-            fig_kwargs["figsize"] = (4, 4)
+            fig_kwargs["figsize"] = (4, 6)
         if input_keys is None:
             input_keys = data["inputs"].keys()
         sns.set(palette="colorblind")

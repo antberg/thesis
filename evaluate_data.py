@@ -37,7 +37,7 @@ def main(argv):
     
     # Initiate values that are constant for each split
     constants = {"f0_hist_xlim": None,
-                 "f0_hist_ylim": None,
+                 "f0_hist_ylim": (0.0, 0.11),
                  "f0_hist_bins": None,
                  "f0_hist_yscale": "linear",
                  "f0_diff_hist_xlim": None,
@@ -47,7 +47,7 @@ def main(argv):
                  "ex_ids": {"train": FLAGS.ex_ids_train,
                             "test": FLAGS.ex_ids_test}}
 
-    for split in DataEvaluator.SPLITS:
+    for split in Util.SPLITS:
         # Load data and initialize data evaluator
         data_provider = TFRecordProvider(FLAGS.data_dir, split=split)
         data_evaluator = DataEvaluator(data_provider)
@@ -79,6 +79,7 @@ def main(argv):
             for i, input_key in enumerate(input_keys):
                 fig_path = os.path.join(fig_dir, "%s_hist_%s.%s" % (input_key, split, FIG_EXTENSION))
                 logging.info("Plotting %s histogram..." % input_key)
+                xlabel = "$f_0$ [Hz]" if input_key == "f0" else "$\Delta f_0 [Hz]$"
                 xlim, ylim = data_evaluator.plot_hist_from_dict(
                     f0_hist_data,
                     input_key=input_key,
@@ -86,7 +87,7 @@ def main(argv):
                     show=FLAGS.show,
                     save_path=fig_path,
                     split=split,
-                    xlabel="fundamental frequency $f_0$ [Hz]",
+                    xlabel=xlabel,
                     xlim=constants[input_key + "_hist_xlim"],
                     ylim=constants[input_key + "_hist_ylim"],
                     yscale=constants[input_key + "_hist_yscale"])
@@ -108,7 +109,7 @@ def main(argv):
                 fig_path = os.path.join(fig_dir, "ex_inputs_%s_%d.%s" % (split, ex_id, FIG_EXTENSION))
                 logging.info("Plotting inputs for %s example %d of '%s'..." % \
                              (split, ex_id, data_evaluator.dataset_name))
-                Util.plot_inputs_from_dict(ex_dict, split, save_path=fig_path, show=FLAGS.show)
+                Util.plot_inputs_from_dict(ex_dict, split=split, save_path=fig_path, show=FLAGS.show)
 
                 # Spectrograms
                 logging.info("Plotting spectrograms for %s example %d of '%s'..." % \

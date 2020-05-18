@@ -158,9 +158,11 @@ def main(argv):
                 # Plot inputs
                 fig_path = os.path.join(fig_dir, "inputs_%s.%s" % (control_signal_label, FIG_EXTENSION))
                 Util.plot_inputs_from_dict(data, plot_audio=False,
+                                                 split=Util.SPLITS[0], # only to use first color in palette
                                                  input_keys=["f0", "phase_sub"],
                                                  save_path=fig_path,
-                                                 show=FLAGS.show)
+                                                 show=FLAGS.show,
+                                                 figsize=(4, 4))
 
                 # Plot spectrogram
                 spec_path = os.path.join(fig_dir, "control_%s.%s" % (control_signal_label, FIG_EXTENSION))

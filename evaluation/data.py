@@ -13,8 +13,6 @@ class DataEvaluator:
     '''
     Class for evaluating a dataset.
     '''
-    SPLITS = ["all", "train", "test", "valid"]
-
     def __init__(self, data_provider):
         '''Construct the DataEvaluator.'''
         self.data_provider = data_provider
@@ -115,7 +113,7 @@ class DataEvaluator:
             fig_kwargs["figsize"] = (4, 3)
         plt.figure(**fig_kwargs)
         sns.set(palette="colorblind")
-        color = list(sns.color_palette())[DataEvaluator.SPLITS.index(split)]
+        color = list(sns.color_palette())[Util.SPLITS.index(split)]
         plt.bar(x, y, width=width, color=color)
 
     @staticmethod
