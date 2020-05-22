@@ -504,7 +504,6 @@ def get_model_builder_from_id(model_id):
     if model_id == "final_cyl":
         '''
         Same as final_vanilla_ddsp, except:
-          - Use f0/n_cyl (n_cyl = 4) as fundamental frequency in harmonic synthesizer
           - Use a Mel-scaled f0 feature as input to decoder network
           - Use a Mel spectral loss instead of STFT
         '''
@@ -515,6 +514,26 @@ def get_model_builder_from_id(model_id):
             model_type="osc_f0_rnn_fc_hpn_decoder",
             window_secs=2,
             input_keys=["f0_scaled_mel"],
+            f0_denom=4.0,
+            losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
+                                               time_res=1/250,
+                                               loss_type="L1",
+                                               mag_weight=0.0,
+                                               logmag_weight=1.0)]
+        )
+    if model_id == "final_cyl2":
+        '''
+        Same as final_cyl, except:
+          - Use f0/n_cyl (n_cyl = 4) as fundamental frequency in harmonic synthesizer
+        '''
+        return ModelBuilder(
+            model_id=model_id,
+            data_dir="./data/tfrecord/ford_final",
+            checkpoint_dir="./data/weights/final/"+model_id,
+            model_type="osc_f0_rnn_fc_hpn_decoder",
+            window_secs=2,
+            input_keys=["f0_scaled_mel"],
+            f0_additive="f0_sub",
             f0_denom=4.0,
             losses=[TimeFreqResMelSpectralLoss(sample_rate=48000,
                                                time_res=1/250,
