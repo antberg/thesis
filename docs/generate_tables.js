@@ -121,7 +121,7 @@ var examples = [
     {"id": "test_42",   "label": "Test: Mid-Range RPM"},
     {"id": "test_49",   "label": "Test: High-Range RPM"}
 ];
-var models = ["vanilla", "mel", "cyl", "phase", "large", "hnt"];
+var models = ["vanilla", "mel", "cyl", "phase", "hnt", "large"];
 var columns = ["original", "reconstruction", "harmonic", "noise", "transients"];
 var suffixes = ["rec", "syn", "syn_additive", "syn_subtractive", "syn_transients"];
 
@@ -138,7 +138,7 @@ var examples = [
     {"id": "outside-lo", "label": "Outside Dataset: Below"},
     {"id": "outside-hi", "label": "Outside Dataset: Above"}
 ];
-var models = ["vanilla", "mel", "cyl", "phase", "large", "hnt"];
+var models = ["vanilla", "mel", "cyl", "phase", "hnt", "large"];
 var columns = ["synthesized", "harmonic", "noise", "transients"];
 var suffixes = ["", "additive", "subtractive", "transients"];
 
