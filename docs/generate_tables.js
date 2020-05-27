@@ -4,14 +4,14 @@
 
 var MODELS = {
     "vanilla":      {"dir": "final_vanilla_ddsp",      "label": "vanilla-DDSP"},
-    "mel":          {"dir": "final_cyl2",              "label": "mel-DDSP"},
-    "cyl":          {"dir": "final_cyl",               "label": "cylinder-DDSP"},
+    "mel":          {"dir": "final_cyl",               "label": "mel-DDSP"},
+    "cyl":          {"dir": "final_cyl2",              "label": "cylinder-DDSP"},
     "phase":        {"dir": "final_phase",             "label": "phase-DDSP"},
     "large":        {"dir": "final_large_gru",         "label": "large-DDSP"},
     "hnt":          {"dir": "final_hnt",               "label": "transient-DDSP"},
     "mini-vanilla": {"dir": "final_mini_vanilla_ddsp", "label": "vanilla-DDSP"},
-    "mini-mel":     {"dir": "final_mini_cyl2",         "label": "mel-DDSP"},
-    "mini-cyl":     {"dir": "final_mini_cyl",          "label": "cylinder-DDSP"},
+    "mini-mel":     {"dir": "final_mini_cyl",          "label": "mel-DDSP"},
+    "mini-cyl":     {"dir": "final_mini_cyl2",         "label": "cylinder-DDSP"},
     "mini-phase":   {"dir": "final_mini_phase",        "label": "phase-DDSP"},
     "mini-hnt":     {"dir": "final_mini_hnt",          "label": "transient-DDSP"}
 };
@@ -101,19 +101,19 @@ var columns;
 var suffixes;
 
 // Generate tables for Overfitting to a Small Dataset
-var examples = [
+examples = [
     {"id": "train_1", "label": "Train: Idling"},
     {"id": "train_3", "label": "Train: Mid-Range RPM"},
     {"id": "train_2", "label": "Train: High-Range RPM"}
 ];
-var models = ["mini-vanilla", "mini-mel", "mini-cyl", "mini-phase", "mini-hnt"];
-var columns = ["original", "reconstruction", "harmonic", "noise", "transients"];
-var suffixes = ["rec", "syn", "syn_additive", "syn_subtractive", "syn_transients"];
+models = ["mini-vanilla", "mini-mel", "mini-cyl", "mini-phase", "mini-hnt"];
+columns = ["original", "reconstruction", "harmonic", "noise", "transients"];
+suffixes = ["rec", "syn", "syn_additive", "syn_subtractive", "syn_transients"];
 
 generateTables("overfit", examples, models, columns, suffixes);
 
 // Generate tables for Reconstruction
-var examples = [
+examples = [
     {"id": "train_1",   "label": "Train: Idling"},
     {"id": "train_127", "label": "Train: Mid-Range RPM"},
     {"id": "train_78",  "label": "Train: High-Range RPM"},
@@ -121,14 +121,14 @@ var examples = [
     {"id": "test_42",   "label": "Test: Mid-Range RPM"},
     {"id": "test_49",   "label": "Test: High-Range RPM"}
 ];
-var models = ["vanilla", "mel", "cyl", "phase", "hnt", "large"];
-var columns = ["original", "reconstruction", "harmonic", "noise", "transients"];
-var suffixes = ["rec", "syn", "syn_additive", "syn_subtractive", "syn_transients"];
+models = ["vanilla", "mel", "cyl", "phase", "hnt", "large"];
+columns = ["original", "reconstruction", "harmonic", "noise", "transients"];
+suffixes = ["rec", "syn", "syn_additive", "syn_subtractive", "syn_transients"];
 
 generateTables("reconstruct", examples, models, columns, suffixes);
 
 // Generate tables for Control by Synthetic Input
-var examples = [
+examples = [
     {"id": "const-lo",   "label": "Constant: Low-Range RPM"},
     {"id": "const-mid",  "label": "Constant: Mid-Range RPM"},
     {"id": "const-hi",   "label": "Constant: High-Range RPM"},
@@ -138,8 +138,8 @@ var examples = [
     {"id": "outside-lo", "label": "Outside Dataset: Below"},
     {"id": "outside-hi", "label": "Outside Dataset: Above"}
 ];
-var models = ["vanilla", "mel", "cyl", "phase", "hnt", "large"];
-var columns = ["synthesized", "harmonic", "noise", "transients"];
-var suffixes = ["", "additive", "subtractive", "transients"];
+models = ["vanilla", "mel", "cyl", "phase", "hnt", "large"];
+columns = ["synthesized", "harmonic", "noise", "transients"];
+suffixes = ["", "additive", "subtractive", "transients"];
 
 generateTables("control", examples, models, columns, suffixes);
