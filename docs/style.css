@@ -1,0 +1,35 @@
+body {
+    font-family: sans-serif;
+}
+
+#content {
+    max-width: 1600px;
+    margin: auto;
+}
+
+h1 {
+    margin-top: 60px;
+}
+
+h2 {
+    margin-top: 50px;
+}
+
+td {
+    text-align: center;
+}
+
+li {
+    margin-left: 20px;
+    margin-top: 10px;
+    list-style: none;
+}
+
+a {
+    text-decoration: none;
+}
+
+.col-model {
+    text-align: right;
+    text-emphasis: bold;
+}

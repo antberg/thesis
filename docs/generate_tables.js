@@ -48,6 +48,7 @@ function generateTableRow(table, model, dir, prefix, suffixes) {
     let row = table.insertRow();
     let cell = row.insertCell();
     let text = document.createTextNode(model);
+    cell.className = "col-model";
     cell.appendChild(text);
     for (let suffix of suffixes) {
         let audio;
@@ -66,7 +67,7 @@ function generateTableRow(table, model, dir, prefix, suffixes) {
 
 // Generate table
 function generateTable(experiment, example, models, columns, suffixes) {
-    let div = document.getElementById(experiment);
+    let div = document.getElementById("div-" + experiment);
     let heading = document.createElement("h2");
     let headingText = document.createTextNode(example.label);
     heading.appendChild(headingText);
@@ -100,6 +101,21 @@ var models;
 var columns;
 var suffixes;
 
+// Generate table of contents
+var h1List = document.getElementsByClassName("toc");
+var tocDiv = document.getElementById("div-contents");
+var ul = document.createElement("ul");
+tocDiv.appendChild(ul)
+for (let i = 0; i < h1List.length; i++) {
+    let h1 = h1List[i];
+    let anchor = document.createElement("a");
+    anchor.href = "#" + h1.childNodes[0].id;
+    anchor.innerHTML = h1.innerText;
+    let li = document.createElement("li");
+    li.appendChild(anchor);
+    tocDiv.appendChild(li);
+}
+
 // Generate tables for Overfitting to a Small Dataset
 examples = [
     {"id": "train_1", "label": "Train: Idling"},
@@ -107,7 +123,7 @@ examples = [
     {"id": "train_2", "label": "Train: High-Range RPM"}
 ];
 models = ["mini-vanilla", "mini-mel", "mini-cyl", "mini-phase", "mini-hnt"];
-columns = ["original", "reconstruction", "harmonic", "noise", "transients"];
+columns = ["original", "reconstruction", "harmonic", "noise", "transient"];
 suffixes = ["rec", "syn", "syn_additive", "syn_subtractive", "syn_transients"];
 
 generateTables("overfit", examples, models, columns, suffixes);
@@ -122,7 +138,7 @@ examples = [
     {"id": "test_49",   "label": "Test: High-Range RPM"}
 ];
 models = ["vanilla", "mel", "cyl", "phase", "hnt", "large"];
-columns = ["original", "reconstruction", "harmonic", "noise", "transients"];
+columns = ["original", "reconstruction", "harmonic", "noise", "transient"];
 suffixes = ["rec", "syn", "syn_additive", "syn_subtractive", "syn_transients"];
 
 generateTables("reconstruct", examples, models, columns, suffixes);
@@ -139,7 +155,7 @@ examples = [
     {"id": "outside-hi", "label": "Outside Dataset: Above"}
 ];
 models = ["vanilla", "mel", "cyl", "phase", "hnt", "large"];
-columns = ["synthesized", "harmonic", "noise", "transients"];
+columns = ["synthesized", "harmonic", "noise", "transient"];
 suffixes = ["", "additive", "subtractive", "transients"];
 
 generateTables("control", examples, models, columns, suffixes);
